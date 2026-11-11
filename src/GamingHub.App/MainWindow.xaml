@@ -1,0 +1,1300 @@
+<Window x:Class="GamingHub.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:GamingHub.App"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+        Title="Gaming Hub" WindowStyle="None" ResizeMode="NoResize" AllowDrop="True"
+        Background="#0F0F0F" Foreground="{StaticResource Fg}" FontFamily="Segoe UI Variable Text, Segoe UI" UseLayoutRounding="True">
+    <Window.Resources>
+        <!-- Home info cards (playtime, last played, source) -->
+        <Style x:Key="InfoCard" TargetType="Border">
+            <Setter Property="Background" Value="#DD242424" />
+            <Setter Property="BorderBrush" Value="#26FFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="34" />
+            <Setter Property="Padding" Value="18,8" />
+            <Setter Property="Margin" Value="0,0,12,0" />
+            <Setter Property="MinWidth" Value="160" />
+        </Style>
+        <Style x:Key="InfoLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{StaticResource Dim}" />
+        </Style>
+        <Style x:Key="InfoValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="19" />
+            <Setter Property="Margin" Value="0,3,0,0" />
+        </Style>
+        <Style x:Key="FocusPill" TargetType="Button">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Width" Value="108" />
+            <Setter Property="Height" Value="42" />
+            <Setter Property="FontSize" Value="19" />
+            <Setter Property="Foreground" Value="{StaticResource Fg}" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="pill" Background="Transparent" CornerRadius="23" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,4" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Tag"><Trigger.Value><sys:Boolean>True</sys:Boolean></Trigger.Value>
+                                <Setter Property="FontWeight" Value="Bold" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="pill" Property="Background" Value="#595959" /></Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="pill" Property="Background" Value="White" />
+                                <Setter Property="Foreground" Value="#191919" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- Round controls use icon metrics independently of the top tabs. -->
+        <Style x:Key="IconButton" TargetType="Button">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Width" Value="46" />
+            <Setter Property="Height" Value="46" />
+            <Setter Property="Background" Value="{StaticResource NeutralAction}" />
+            <Setter Property="Foreground" Value="{StaticResource Fg}" />
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="19" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="b" CornerRadius="40" Padding="{TemplateBinding Padding}" BorderThickness="{TemplateBinding BorderThickness}" BorderBrush="Transparent" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#595959" /></Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="b" Property="Background" Value="White" />
+                                <Setter Property="Foreground" Value="#191919" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- Settings building blocks: page title, subheads, row cards, toggle rows (title + grey description + switch), value rows -->
+        <Style x:Key="PageTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="34" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,0,0,16" />
+        </Style>
+        <Style x:Key="SubHead" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="Foreground" Value="{StaticResource Dim}" />
+            <Setter Property="Margin" Value="4,26,0,10" />
+        </Style>
+        <Style x:Key="Note" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="#BDBDBD" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="4,14,0,0" />
+        </Style>
+        <Style x:Key="RowDesc" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="{StaticResource Dim}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,3,24,0" />
+        </Style>
+        <Style x:Key="RowCard" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource ControlSurface}" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="6" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource PanelEdge}" />
+        </Style>
+        <Style x:Key="ValueRow" TargetType="DockPanel">
+            <Setter Property="Margin" Value="18,12,14,12" />
+            <Setter Property="LastChildFill" Value="True" />
+        </Style>
+        <Style x:Key="ToggleRow" TargetType="CheckBox">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Foreground" Value="{StaticResource Fg}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="row" Margin="2" Background="{DynamicResource ToggleSurface}" CornerRadius="10" Padding="18,8,16,8" BorderThickness="2" BorderBrush="Transparent">
+                            <DockPanel>
+                                <Grid DockPanel.Dock="Right" Width="50" Height="28" VerticalAlignment="Center" Margin="20,0,0,0">
+                                    <Border x:Name="track" CornerRadius="14" Background="#454545" />
+                                    <Ellipse x:Name="knob" Width="22" Height="22" Fill="#CFCFCF" HorizontalAlignment="Left" Margin="3,0" />
+                                </Grid>
+                                <StackPanel VerticalAlignment="Center">
+                                    <ContentPresenter TextElement.FontSize="19" />
+                                    <TextBlock x:Name="description" Text="{TemplateBinding Tag}" FontSize="14" Foreground="{StaticResource Dim}" TextWrapping="Wrap" Margin="0,3,0,0" />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="track" Property="Background" Value="{DynamicResource ToggleActive}" />
+                                <Setter TargetName="knob" Property="HorizontalAlignment" Value="Right" />
+                                <Setter TargetName="knob" Property="Fill" Value="White" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="row" Property="Background" Value="{DynamicResource HoverSurface}" /></Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="row" Property="Background" Value="{DynamicResource ToggleFocus}" />
+                                <Setter Property="Foreground" Value="{DynamicResource ToggleFocusText}" />
+                                <Setter TargetName="description" Property="Foreground" Value="{DynamicResource ToggleFocusText}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <LinearGradientBrush x:Key="HeroFade" StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="Black" Offset="0.78" />
+            <GradientStop Color="Transparent" Offset="1" />
+        </LinearGradientBrush>
+        <!-- Game tile used by the Home carousel and the Library grid -->
+        <Style x:Key="TileItem" TargetType="ListBoxItem">
+            <Setter Property="Background" Value="{StaticResource Card}" />
+            <Setter Property="Foreground" Value="{StaticResource Fg}" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="t" CornerRadius="14" BorderThickness="3" BorderBrush="Transparent" Background="{TemplateBinding Background}"
+                                RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform><ScaleTransform /></Border.RenderTransform>
+                            <Grid>
+                                <Grid.RowDefinitions><RowDefinition /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <Border CornerRadius="11" Background="{StaticResource MissingArt}" />
+                                <TextBlock Text="{Binding Initial}" FontSize="64" FontWeight="Light" Foreground="#DDDDDD"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <Border CornerRadius="11">
+                                    <Border.Background>
+                                        <ImageBrush Stretch="UniformToFill" ImageSource="{Binding Cover, Converter={StaticResource Img}, ConverterParameter=420, IsAsync=True}" />
+                                    </Border.Background>
+                                </Border>
+                                <ContentPresenter Grid.Row="1" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="t" Property="BorderBrush" Value="{StaticResource FocusHighlight}" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="H2" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="26" />
+            <Setter Property="Margin" Value="0,28,0,10" />
+            <Setter Property="Foreground" Value="{StaticResource Fg}" />
+        </Style>
+        <!-- Modern dropdown: dark rounded box + chevron; opens a dark rounded list with a soft shadow, ✓ on the current choice -->
+        <!-- Controls list / hint label: key caps (text or a drawn face-button symbol) and labels -->
+        <Style x:Key="KeyCap" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource NeutralAction}" />
+            <Setter Property="CornerRadius" Value="15" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="MinWidth" Value="40" />
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextBlock.TextAlignment" Value="Center" />
+            <Setter Property="TextBlock.FontSize" Value="15" />
+            <Setter Property="TextBlock.Foreground" Value="{StaticResource Fg}" />
+        </Style>
+        <Style x:Key="ShortcutCap" TargetType="Border" BasedOn="{StaticResource KeyCap}"><Setter Property="Width" Value="96" /></Style>
+        <Style x:Key="FaceIcon" TargetType="Path">
+            <Setter Property="Width" Value="14" /><Setter Property="Height" Value="14" /><Setter Property="Stretch" Value="Uniform" />
+            <Setter Property="Stroke" Value="{StaticResource Fg}" /><Setter Property="StrokeThickness" Value="1.8" />
+            <Setter Property="StrokeLineJoin" Value="Round" /><Setter Property="StrokeStartLineCap" Value="Round" /><Setter Property="StrokeEndLineCap" Value="Round" />
+            <Setter Property="HorizontalAlignment" Value="Center" /><Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="KeyLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="Foreground" Value="{StaticResource Dim}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="12,0,0,0" />
+        </Style>
+        <Style x:Key="KeyHead" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="19" />
+            <Setter Property="Foreground" Value="{StaticResource Fg}" />
+            <Setter Property="Margin" Value="0,0,0,12" />
+        </Style>
+        <Style x:Key="KeyRow" TargetType="StackPanel">
+            <Setter Property="Margin" Value="0,0,0,10" />
+        </Style>        <!-- Library search: same rounded box as the dropdowns, with a search icon and a hint while empty -->
+        <Style x:Key="SearchBox" TargetType="TextBox">
+            <Setter Property="Height" Value="42" />
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="Foreground" Value="{StaticResource Fg}" />
+            <Setter Property="CaretBrush" Value="White" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="box" Background="Transparent" CornerRadius="26" BorderThickness="2" BorderBrush="Transparent" Padding="14,5">
+                            <DockPanel>
+                                <TextBlock x:Name="icon" DockPanel.Dock="Left" Text="&#xE721;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16"
+                                           Foreground="{StaticResource Dim}" VerticalAlignment="Center" Margin="2,1,10,0" />
+                                <Grid VerticalAlignment="Center">
+                                    <TextBlock x:Name="hint" Text="{TemplateBinding Tag}" Foreground="{StaticResource Dim}" Visibility="Collapsed" IsHitTestVisible="False" />
+                                    <ScrollViewer x:Name="PART_ContentHost" Focusable="False" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
+                                </Grid>
+                            </DockPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Text" Value=""><Setter TargetName="hint" Property="Visibility" Value="Visible" /></Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="box" Property="Background" Value="White" />
+                                <Setter Property="Foreground" Value="#191919" />
+                                <Setter Property="CaretBrush" Value="#191919" />
+                                <Setter TargetName="icon" Property="Foreground" Value="#191919" />
+                                <Setter TargetName="hint" Property="Foreground" Value="#525252" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="{StaticResource ControlSurface}" />
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="MinWidth" Value="220" />
+            <Setter Property="Foreground" Value="{StaticResource Fg}" />
+            <Setter Property="Margin" Value="0,4,12,12" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="box" Background="{TemplateBinding Background}" CornerRadius="26" BorderThickness="2" BorderBrush="Transparent" Padding="14,9,12,9">
+                                <DockPanel>
+                                    <Border x:Name="arrowWell" DockPanel.Dock="Right" Margin="14,0,2,0" CornerRadius="14">
+                                        <TextBlock x:Name="chevron" Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" Foreground="{TemplateBinding Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <ContentPresenter Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                      VerticalAlignment="Center" IsHitTestVisible="False" />
+                                </DockPanel>
+                            </Border>
+                            <ToggleButton Focusable="False" ClickMode="Press"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton"><Border Background="Transparent" /></ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" VerticalOffset="6"
+                                   AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
+                                <Border Margin="0,0,14,14" Background="{DynamicResource Card}" CornerRadius="12" BorderThickness="1" BorderBrush="{DynamicResource PanelEdge}" Padding="6"
+                                        MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="440">
+                                    <Border.Effect><DropShadowEffect BlurRadius="22" ShadowDepth="6" Opacity="0.55" Color="Black" /></Border.Effect>
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="box" Property="Background" Value="{DynamicResource HoverSurface}" /></Trigger>
+                            <Trigger Property="Background" Value="{StaticResource SettingsAction}">
+                                <Setter TargetName="arrowWell" Property="Width" Value="28" />
+                                <Setter TargetName="arrowWell" Property="Height" Value="28" />
+                                <Setter TargetName="arrowWell" Property="Background" Value="#424242" />
+                                <Setter TargetName="chevron" Property="FontSize" Value="14" />
+                                <Setter TargetName="chevron" Property="Foreground" Value="White" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="box" Property="Background" Value="{DynamicResource HoverSurface}" />
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="Background" Value="{StaticResource SettingsAction}" />
+                                    <Condition Property="IsKeyboardFocusWithin" Value="True" />
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="box" Property="Background" Value="{DynamicResource FocusHighlight}" />
+                                <Setter Property="Foreground" Value="#181818" />
+                            </MultiTrigger>
+                            <Trigger Property="Background" Value="{StaticResource FocusHighlight}">
+                                <Setter TargetName="box" Property="Background" Value="White" />
+                                <Setter TargetName="chevron" Property="Foreground" Value="#191919" />
+                            </Trigger>
+                            <Trigger Property="IsDropDownOpen" Value="True">
+                                <Setter TargetName="chevron" Property="Text" Value="&#xE70E;" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Resources>
+                <Style TargetType="ComboBoxItem">
+                    <Setter Property="Foreground" Value="{StaticResource Fg}" />
+                    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ComboBoxItem">
+                                <Border x:Name="row" CornerRadius="8" Padding="12,9" Margin="0,1" Background="Transparent">
+                                    <DockPanel>
+                                        <TextBlock x:Name="check" DockPanel.Dock="Right" Text="&#xE73E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                   FontSize="13" Margin="16,0,0,0" VerticalAlignment="Center" Visibility="Hidden" />
+                                        <ContentPresenter VerticalAlignment="Center" />
+                                    </DockPanel>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter TargetName="check" Property="Visibility" Value="Visible" />
+                                        <Setter TargetName="check" Property="Foreground" Value="{DynamicResource FocusHighlight}" />
+                                    </Trigger>
+                                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="row" Property="Background" Value="#14FFFFFF" /></Trigger>
+                                    <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="row" Property="Background" Value="{DynamicResource HoverSurface}" /></Trigger>
+                                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="row" Property="Background" Value="White" /><Setter Property="Foreground" Value="#191919" /><Setter TargetName="check" Property="Foreground" Value="#191919" /></Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Style.Resources>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Cinematic hero background (two layers crossfaded from code) -->
+        <Grid Grid.RowSpan="3" IsHitTestVisible="False" Background="{StaticResource ShellBackground}">
+            <!-- Each hero layer: blurred fill for ambience + the sharp art. Wide art fills the top ~70% (down to the game's
+                 name) and fades into the blur; tall posters stand uncropped on the right. Mode is set per image in UpdateHero. -->
+            <Grid x:Name="HeroA" Opacity="0" ClipToBounds="True" RenderTransformOrigin="0.5,0.5" Visibility="{Binding IsHome, Converter={StaticResource Vis}}">
+                <Grid.RowDefinitions><RowDefinition Height="7*" /><RowDefinition Height="3*" /></Grid.RowDefinitions>
+                <Image Grid.RowSpan="2" Stretch="UniformToFill" Opacity="0.5" Margin="-80"><Image.Effect><BlurEffect Radius="60" RenderingBias="Performance" /></Image.Effect></Image>
+                <Image Stretch="UniformToFill" OpacityMask="{StaticResource HeroFade}" />
+            </Grid>
+            <Grid x:Name="HeroB" Opacity="0" ClipToBounds="True" RenderTransformOrigin="0.5,0.5" Visibility="{Binding IsHome, Converter={StaticResource Vis}}">
+                <Grid.RowDefinitions><RowDefinition Height="7*" /><RowDefinition Height="3*" /></Grid.RowDefinitions>
+                <Image Grid.RowSpan="2" Stretch="UniformToFill" Opacity="0.5" Margin="-80"><Image.Effect><BlurEffect Radius="60" RenderingBias="Performance" /></Image.Effect></Image>
+                <Image Stretch="UniformToFill" OpacityMask="{StaticResource HeroFade}" />
+            </Grid>
+            <Rectangle Opacity="0.38" Visibility="{Binding IsHome, Converter={StaticResource Vis}}">
+                <Rectangle.Fill>
+                    <RadialGradientBrush Center="0.15,0.95" GradientOrigin="0.15,0.95" RadiusX="0.9" RadiusY="0.9">
+                        <GradientStop Color="#F7B75A" Offset="0" />
+                        <GradientStop Color="#00000000" Offset="1" />
+                    </RadialGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+            <Rectangle>
+                <Rectangle.Fill>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Color="#D00A101E" Offset="0" />
+                        <GradientStop Color="#420A101E" Offset="0.55" />
+                        <GradientStop Color="#140A101E" Offset="1" />
+                    </LinearGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+            <Rectangle>
+                <Rectangle.Fill>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#990B0B0B" Offset="0" />
+                        <GradientStop Color="#000B0B0B" Offset="0.3" />
+                        <GradientStop Color="#000B0B0B" Offset="0.62" />
+                        <GradientStop Color="#F20B0B0B" Offset="1" />
+                    </LinearGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+            <Rectangle Fill="#640B0B0B" Visibility="{Binding IsHome, Converter={StaticResource NotVis}}" />
+            <Grid Visibility="{Binding IsHome, Converter={StaticResource NotVis}}" ClipToBounds="True">
+                <Grid.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#170E1D" Offset="0" />
+                        <GradientStop Color="#452039" Offset="0.48" />
+                        <GradientStop Color="#241020" Offset="1" />
+                    </LinearGradientBrush>
+                </Grid.Background>
+                <Rectangle Margin="-220,-100">
+                    <Rectangle.RenderTransform><TranslateTransform /></Rectangle.RenderTransform>
+                    <Rectangle.Fill>
+                        <RadialGradientBrush Center="0.65,0.33" GradientOrigin="0.65,0.33" RadiusX="0.55" RadiusY="0.77">
+                            <GradientStop Color="#C5BF6A32" Offset="0" />
+                            <GradientStop Color="#765C294B" Offset="0.58" />
+                            <GradientStop Color="#005C294B" Offset="1" />
+                        </RadialGradientBrush>
+                    </Rectangle.Fill>
+                    <Rectangle.Style>
+                        <Style TargetType="Rectangle">
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding IsVisible, RelativeSource={RelativeSource Self}}" Value="True" />
+                                        <Condition Binding="{Binding IsActive, RelativeSource={RelativeSource AncestorType=Window}}" Value="True" />
+                                        <Condition Binding="{Binding IsChecked, ElementName=ReducedMotionToggle}" Value="False" />
+                                    </MultiDataTrigger.Conditions>
+                                    <MultiDataTrigger.EnterActions>
+                                        <BeginStoryboard Name="SettingsDrift">
+                                            <Storyboard AutoReverse="True" RepeatBehavior="Forever">
+                                                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" From="-170" To="170" Duration="0:0:16" AccelerationRatio="0.4" DecelerationRatio="0.4" />
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </MultiDataTrigger.EnterActions>
+                                    <MultiDataTrigger.ExitActions><RemoveStoryboard BeginStoryboardName="SettingsDrift" /></MultiDataTrigger.ExitActions>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Rectangle.Style>
+                </Rectangle>
+            </Grid>
+            <Border x:Name="MissingHero" IsHitTestVisible="False" Background="{StaticResource MissingArt}" Visibility="Collapsed" />
+        </Grid>
+
+        <!-- Top bar: tab pills (left) · status widgets + power (right) -->
+        <DockPanel Margin="64,24,64,0">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="NavPower" Style="{StaticResource IconButton}" Width="42" Height="42" Background="Transparent" Content="&#xE713;" Click="OpenQuickSettings" ToolTip="Quick settings" Margin="0,0,12,0" />
+                <Border Background="Transparent" CornerRadius="8" Padding="6,3" Margin="0,0,12,0" VerticalAlignment="Center" ToolTip="Development build: test data in %LOCALAPPDATA%\GamingHub-Dev"
+                        Visibility="{Binding IsDev, Converter={StaticResource Vis}}">
+                    <TextBlock Text="DEV" FontSize="11" FontWeight="Bold" />
+                </Border>
+                <Border Background="Transparent" CornerRadius="16" Padding="14,6" Margin="0,0,22,0" VerticalAlignment="Center"
+                        Visibility="{Binding IsGameRunning, Converter={StaticResource Vis}}">
+                    <TextBlock MaxWidth="140" TextTrimming="CharacterEllipsis" Text="{Binding RunningName, StringFormat='▶  {0}'}" Foreground="#BEBEBE" FontSize="16" />
+                </Border>
+                <!-- Controllers: a DualSense per pad (light bar glows on the pad in charge), battery underneath -->
+                <ContentControl Content="{x:Null}" ContentTemplate="{StaticResource PadIcon}" Opacity="0.62" Margin="0,0,14,0" VerticalAlignment="Center"
+                                ToolTip="No controller" Visibility="{Binding HasPads, Converter={StaticResource NotVis}}" Focusable="False" />
+                <ItemsControl ItemsSource="{Binding Pads}" Focusable="False" VerticalAlignment="Center">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,0,14,0" ToolTip="{Binding Tooltip}" Background="Transparent">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding Player, StringFormat=P{0}}" FontWeight="SemiBold" FontSize="12" Foreground="#D8D8D8" Margin="0,0,5,0" VerticalAlignment="Center" />
+                                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PadIcon}" Focusable="False" HorizontalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,0" Visibility="{Binding HasBattery, Converter={StaticResource Vis}}">
+                                    <Grid VerticalAlignment="Center">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="22" /><ColumnDefinition Width="2" /></Grid.ColumnDefinitions>
+                                        <Border Height="10" BorderBrush="#CFCFCF" BorderThickness="1.2" CornerRadius="2.5" Padding="1.5">
+                                            <Rectangle RadiusX="1" RadiusY="1" Fill="#54E69D" RenderTransformOrigin="0,0.5">
+                                                <Rectangle.RenderTransform><ScaleTransform ScaleX="{Binding BatteryFraction}" /></Rectangle.RenderTransform>
+                                            </Rectangle>
+                                        </Border>
+                                        <Rectangle Grid.Column="1" Width="2" Height="4" Fill="#CFCFCF" />
+                                    </Grid>
+                                    <TextBlock Margin="5,0,0,0" FontSize="13" Foreground="#CFCFCF" VerticalAlignment="Center" Text="{Binding Battery, StringFormat='{}{0}%'}" />
+                                    <TextBlock Margin="2,0,0,0" FontSize="12" Foreground="#C1C1C1" VerticalAlignment="Center" Text="⚡" Visibility="{Binding Charging, Converter={StaticResource Vis}}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <!-- Display widget: TV or monitor glyph for the screen showing Gaming Hub -->
+                <Grid Margin="0,0,14,0" VerticalAlignment="Center" ToolTip="{Binding HostDisplayName}" Background="Transparent">
+                    <Path Width="29" Height="23" Stretch="Uniform" Stroke="{StaticResource Fg}" StrokeThickness="2" StrokeLineJoin="Round"
+                          Data="M2,2 H38 V24 H2 Z M20,24 V30 M12,31 H28" Visibility="{Binding HostIsTv, Converter={StaticResource NotVis}}" />
+                    <Path Width="33" Height="23" Stretch="Uniform" Stroke="{StaticResource Fg}" StrokeThickness="2" StrokeLineJoin="Round"
+                          Data="M1,2 H47 V26 H1 Z M10,26 L7,31 M38,26 L41,31" Visibility="{Binding HostIsTv, Converter={StaticResource Vis}}" />
+                </Grid>
+                <TextBlock Text="{Binding Clock}" FontSize="20" VerticalAlignment="Center" />
+            </StackPanel>
+            <StackPanel HorizontalAlignment="Left" x:Name="TopNav" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="NavHome" Style="{StaticResource FocusPill}" Content="Home" Tag="{Binding IsHome}" Command="{Binding ShowHomeCommand}" />
+                <Button x:Name="NavLibrary" Margin="8,0" Style="{StaticResource FocusPill}" Content="Library" Tag="{Binding IsLibrary}" Command="{Binding ShowLibraryCommand}" />
+                <Button x:Name="NavSettings" Style="{StaticResource FocusPill}" Content="Settings" Tag="{Binding IsSettings}" Command="{Binding ShowSettingsCommand}" />
+            </StackPanel>
+        </DockPanel>
+
+        <!-- HOME -->
+        <Grid x:Name="HomeLayer" Grid.Row="1" Margin="64,28,64,0" Visibility="{Binding IsHome, Converter={StaticResource Vis}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <ListBox x:Name="Carousel" ItemsSource="{Binding HomeGames}" SelectedItem="{Binding SelectedGame}" Background="Transparent" BorderThickness="0"
+                     Height="276" ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                     KeyboardNavigation.DirectionalNavigation="Contained">
+                <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel Orientation="Horizontal" Margin="16,0" /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource TileItem}">
+                        <Setter Property="Width" Value="136" />
+                        <Setter Property="Height" Value="204" />
+                        <Setter Property="Margin" Value="0,30,22,30" />
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate><DataTemplate><Grid /></DataTemplate></ListBox.ItemTemplate>
+            </ListBox>
+            <TextBlock Grid.Row="1" Margin="0,24,0,0" FontSize="24" Foreground="{StaticResource Dim}" TextWrapping="Wrap"
+                       Visibility="{Binding HasHomeGames, Converter={StaticResource NotVis}}"
+                       Text="Your Home is empty. In Library, pick a game and press Add to Home (or Options › Game settings › Show on Home)." />
+            <StackPanel x:Name="HomeDetails" Grid.Row="1" VerticalAlignment="Bottom" Margin="0,0,0,36" Visibility="{Binding HomeHasSelection, Converter={StaticResource Vis}}">
+                <StackPanel.RenderTransform><TranslateTransform /></StackPanel.RenderTransform>
+                <TextBlock Text="{Binding SelectedGame.Name}" FontSize="76" FontWeight="SemiBold" TextWrapping="Wrap" MaxWidth="1300" HorizontalAlignment="Left" Margin="0,0,0,26">
+                    <TextBlock.Effect><DropShadowEffect BlurRadius="18" ShadowDepth="2" Opacity="0.7" Color="Black" /></TextBlock.Effect>
+                </TextBlock>
+                <StackPanel x:Name="PlayRow" Orientation="Horizontal">
+                    <Button x:Name="PlayButton" Style="{StaticResource IconButton}" Width="Auto" Height="Auto" Padding="64,15" BorderThickness="3" FontSize="26" FontFamily="Segoe UI Variable Text, Segoe UI" FontWeight="SemiBold" Margin="0,0,12,0" Content="▶  Play" Command="{Binding PlayCommand}" />
+                    <Button Background="{StaticResource NeutralAction}" Content="Move game to next display" Command="{Binding MoveGameCommand}" Visibility="{Binding IsGameRunning, Converter={StaticResource Vis}}" />
+                    <!-- compact round actions: favourite, game settings, remove from Home -->
+                    <Button Style="{StaticResource IconButton}" Content="&#xE734;" Command="{Binding ToggleFavoriteCommand}" ToolTip="Favorite" Margin="0,0,12,0" />
+                    <Button Style="{StaticResource IconButton}" Content="&#xE70F;" Command="{Binding BeginEditCommand}" ToolTip="Game settings" Margin="0,0,12,0" />
+                    <Button Style="{StaticResource IconButton}" Content="&#xE77A;" Command="{Binding ToggleHomeCommand}" ToolTip="Remove from Home" Margin="0,0,28,0" />
+                    <!-- info on the same line -->
+                    <Border Style="{StaticResource InfoCard}" VerticalAlignment="Center">
+                        <StackPanel><TextBlock Text="Playtime" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding SelectedGame.PlaytimeText}" Style="{StaticResource InfoValue}" /></StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource InfoCard}" VerticalAlignment="Center">
+                        <StackPanel><TextBlock Text="Last played" Style="{StaticResource InfoLabel}" /><TextBlock Text="{Binding SelectedGame.LastPlayedText}" Style="{StaticResource InfoValue}" /></StackPanel>
+                    </Border>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
+        <!-- LIBRARY -->
+        <Grid x:Name="LibraryLayer" Grid.Row="1" Margin="0,14,0,0" HorizontalAlignment="Center" Visibility="{Binding IsLibrary, Converter={StaticResource Vis}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <StackPanel Margin="16,0,30,4">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Library" FontSize="28" FontWeight="SemiBold" />
+                    <Border Background="{StaticResource ControlSurface}" CornerRadius="16" Padding="11,3" Margin="10,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding LibraryGames.Count}" FontSize="17" Foreground="{StaticResource Fg}" />
+                    </Border>
+                </StackPanel>
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Focusable="False" Margin="0,3,0,2" HorizontalContentAlignment="Stretch">
+                    <Grid x:Name="LibraryBar">
+                        <Grid.Resources>
+                            <Style TargetType="Button" BasedOn="{StaticResource FocusPill}">
+                                <Setter Property="FontSize" Value="16" />
+                                <Setter Property="Width" Value="Auto" />
+                                <Setter Property="Padding" Value="12,0" />
+                                <Setter Property="Margin" Value="0,0,8,0" />
+                            </Style>
+                            <SolidColorBrush x:Key="HoverSurface" Color="Transparent" />
+                            <SolidColorBrush x:Key="Card" Color="#FB312130" />
+                            <SolidColorBrush x:Key="Accent" Color="#89583D" />
+                            <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+                                <Setter Property="Height" Value="42" />
+                                <Setter Property="Background" Value="Transparent" />
+                                <Style.Triggers>
+                                    <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource FocusHighlight}" />
+                                        <Setter Property="Foreground" Value="#191919" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Resources>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" MinWidth="155" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="LibrarySearch" Style="{StaticResource SearchBox}" Tag="Search games" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged, Delay=200}" ToolTip="Search" VerticalAlignment="Center" />
+                        <ComboBox x:Name="LibraryFilter" Grid.Column="1" Margin="8,0" AutomationProperties.Name="Filter games" ToolTip="Filter games" ItemsSource="{Binding Filters}" SelectedItem="{Binding Filter}" />
+                        <ComboBox Grid.Column="2" Margin="0,0,8,0" AutomationProperties.Name="Sort games" ToolTip="Sort games" ItemsSource="{Binding Sorts}" SelectedItem="{Binding Sort}" />
+                        <StackPanel Grid.Column="3" Orientation="Horizontal">
+                            <Button Content="Scan for games" Command="{Binding RescanLibraryCommand}" />
+                            <Button Content="Add Game" Command="{Binding BeginAddCommand}" />
+                            <Button Content="Game settings" Command="{Binding BeginEditCommand}" ToolTip="Edit the selected game (Options on a game, or right-click)" />
+                            <Button FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Width="42" Padding="0" Content="{Binding HomeToggleGlyph}" ToolTip="{Binding HomeToggleLabel}"
+                                Command="{Binding ToggleHomeCommand}" Margin="0" />
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </StackPanel>
+            <ListBox x:Name="LibraryGrid" Grid.Row="1" ItemsSource="{Binding LibraryGames}" SelectedItem="{Binding SelectedGame}" Background="Transparent" BorderThickness="0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled" KeyboardNavigation.DirectionalNavigation="Contained">
+                <!-- Room around the tiles: the selected one grows 6% from its centre and glows, so the top row and edges mustn't be cut -->
+                <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel Margin="16,10,4,4" /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource TileItem}">
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="Width" Value="{DynamicResource LibraryTileWidth}" />
+                        <Setter Property="Height" Value="{DynamicResource LibraryTileHeight}" />
+                        <Setter Property="Margin" Value="0,0,12,10" />
+                        <EventSetter Event="RequestBringIntoView" Handler="LibraryTile_RequestBringIntoView" />
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border Height="44" Padding="1,3">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
+                                <TextBlock Text="{Binding PlaytimeText}" FontSize="13" Foreground="{StaticResource Dim}" Margin="0,1,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="20" Foreground="{StaticResource Dim}"
+                       Text="No games in this view. Change your search or filter, or add a game."
+                       Visibility="{Binding ElementName=LibraryGrid, Path=HasItems, Converter={StaticResource NotVis}}" />
+        </Grid>
+
+        <!-- Persistent category rail with the active settings page alongside it. -->
+        <Grid x:Name="SettingsPage" Grid.Row="1" Margin="64,28,64,24" MaxWidth="1510" Visibility="{Binding IsSettings, Converter={StaticResource Vis}}">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="0.26*" MaxWidth="285" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <DockPanel Margin="0,0,24,0">
+                <TextBlock DockPanel.Dock="Top" Text="Settings" FontSize="42" FontWeight="Light" Margin="16,0,0,20" />
+                <ListBox x:Name="SettingsRail" ItemsSource="{Binding SettingsCategories}" SelectedItem="{Binding SettingsSection}"
+                         PreviewMouseLeftButtonUp="SettingsCategoryClicked" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         Background="Transparent" BorderThickness="0" KeyboardNavigation.DirectionalNavigation="Contained">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                            <Setter Property="Foreground" Value="{StaticResource Fg}" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="row" Background="Transparent" BorderBrush="Transparent" BorderThickness="4,0,0,0" Padding="12,12" Margin="0,0,0,4" CornerRadius="6">
+                                            <TextBlock Text="{Binding Name}" FontSize="22" VerticalAlignment="Center" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                                <Setter TargetName="row" Property="Background" Value="White" />
+                                                <Setter Property="Foreground" Value="#191919" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                </ListBox>
+            </DockPanel>
+
+            <DockPanel Grid.Column="1">
+                <ScrollViewer x:Name="SettingsLayer" VerticalScrollBarVisibility="Auto" Focusable="False">
+                <ScrollViewer.Resources>
+                    <SolidColorBrush x:Key="Card" Color="#F4312030" />
+                    <SolidColorBrush x:Key="ControlSurface" Color="Transparent" />
+                    <SolidColorBrush x:Key="PanelEdge" Color="Transparent" />
+                    <SolidColorBrush x:Key="Accent" Color="#686868" />
+                    <SolidColorBrush x:Key="HoverSurface" Color="#535353" />
+                    <SolidColorBrush x:Key="FocusHighlight" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="ToggleSurface" Color="Transparent" />
+                    <SolidColorBrush x:Key="ToggleActive" Color="#737373" />
+                    <SolidColorBrush x:Key="ToggleFocus" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="ToggleFocusText" Color="#191919" />
+                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                        <Setter Property="Background" Value="{StaticResource SettingsAction}" />
+                    </Style>
+                    <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+                        <Setter Property="Background" Value="{StaticResource SettingsAction}" />
+                    </Style>
+                    <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                        <Setter Property="Background" Value="{StaticResource SettingsAction}" />
+                        <Style.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="Background" Value="White" /><Setter Property="Foreground" Value="#191919" /><Setter Property="CaretBrush" Value="#191919" /></Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ScrollViewer.Resources>
+                <StackPanel HorizontalAlignment="Stretch" Margin="20,8,20,40">
+
+                    <!-- Displays -->
+                    <StackPanel Visibility="{Binding SettingsSection.Name, Converter={StaticResource Is}, ConverterParameter=Displays}">
+                        <TextBlock Text="Displays" Style="{StaticResource PageTitle}" />
+                        <Border Background="Transparent" CornerRadius="8" Padding="16,10" Margin="0,0,0,12" Visibility="{Binding RemapRequired, Converter={StaticResource Vis}}">
+                            <TextBlock Text="Your preferred display can't be identified uniquely. Pick it again with “Set Preferred” or “Test Display”." FontSize="17" TextWrapping="Wrap" />
+                        </Border>
+                        <Border CornerRadius="14" Padding="22,18" Margin="0,0,0,14">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Left" Text="&#xE7F4;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="34" Margin="0,0,18,0" VerticalAlignment="Center" />
+                                <StackPanel>
+                                    <TextBlock Text="Preferred display" FontSize="17" />
+                                    <TextBlock Text="{Binding PreferredStatus}" FontSize="30" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding HostDisplayName, StringFormat='Gaming Hub is on {0}'}" FontSize="15" Margin="0,4,0,0" />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                        <ListBox x:Name="DisplayMap" AutomationProperties.Name="Inspect a display" ItemsSource="{Binding Displays}"
+                                 SelectedItem="{Binding InspectedDisplay, Mode=TwoWay}" Background="Transparent" BorderThickness="0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                            <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Foreground" Value="{StaticResource Fg}" />
+                                    <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
+                                    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border x:Name="screen" Background="Transparent" CornerRadius="14" Padding="12" Width="218" Margin="0,0,10,8">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsSelected" Value="True"><Setter Property="FontWeight" Value="SemiBold" /></Trigger>
+                                                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="screen" Property="Background" Value="#595959" /></Trigger>
+                                                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="screen" Property="Background" Value="White" /><Setter Property="Foreground" Value="#191919" /></Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel>
+                                        <Viewbox Width="94" Height="57" Margin="0,0,0,8">
+                                            <Canvas Width="96" Height="58">
+                                                <Rectangle Width="92" Height="46" Canvas.Left="2" Canvas.Top="1" RadiusX="4" RadiusY="4" Fill="#161616" Stroke="#B1B1B1" StrokeThickness="2" />
+                                                <TextBlock Canvas.Top="14" Width="96" TextAlignment="Center" Text="Hub is here" FontSize="13" Foreground="#DEDEDE" FontWeight="SemiBold" Visibility="{Binding IsHost, Converter={StaticResource Vis}}" />
+                                                <Path Stroke="#B1B1B1" StrokeThickness="2.5" Data="M48,47 V54 M34,55 H62" Visibility="{Binding Info.LooksLikeTv, Converter={StaticResource NotVis}}" />
+                                                <Path Stroke="#B1B1B1" StrokeThickness="2.5" Data="M22,47 L16,55 M74,47 L80,55" Visibility="{Binding Info.LooksLikeTv, Converter={StaticResource Vis}}" />
+                                            </Canvas>
+                                        </Viewbox>
+                                        <TextBlock Text="{Binding Info.Identity.FriendlyName}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding ConnectionLabel}" FontSize="14" />
+                                        <TextBlock Text="★ Preferred" FontSize="15" Visibility="{Binding IsPreferred, Converter={StaticResource Vis}}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <ContentControl x:Name="DisplayActions" Content="{Binding InspectedDisplay}" Focusable="False" HorizontalContentAlignment="Stretch"
+                                        Visibility="{Binding InspectedDisplay, Converter={StaticResource NotNull}}">
+                            <ContentControl.ContentTemplate>
+                                <DataTemplate>
+                                    <Border Background="Transparent" CornerRadius="14" Padding="0,14" Margin="0,2,0,10">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" FontSize="21" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding Details}" Foreground="{StaticResource Dim}" FontSize="15" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding IdentityText}" Foreground="{StaticResource Dim}" FontSize="13" Margin="0,4,0,12" />
+                                            <WrapPanel>
+                                                <Button Content="Test Display" IsEnabled="{Binding CanUse}" Margin="0,0,10,0" Command="{Binding DataContext.TestDisplayCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
+                                                <Button x:Name="pref" Content="Set Preferred" Margin="0,0,10,0" Command="{Binding DataContext.SetPreferredCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
+                                                <Button x:Name="fb" Content="Set Fallback" Margin="0,0,10,0" Command="{Binding DataContext.SetFallbackCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
+                                                <Button Content="Make main display" Margin="0,0,10,0" Visibility="{Binding CanMakeMain, Converter={StaticResource Vis}}"
+                                                        Command="{Binding DataContext.MakeMainDisplayCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
+                                                <Button Content="Extend desktop to this display" Visibility="{Binding CanUse, Converter={StaticResource NotVis}}"
+                                                        Command="{Binding DataContext.ExtendDisplayCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
+                                            </WrapPanel>
+                                        </StackPanel>
+                                    </Border>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsPreferred}" Value="True"><Setter TargetName="pref" Property="Content" Value="★ Preferred" /></DataTrigger>
+                                        <DataTrigger Binding="{Binding IsFallback}" Value="True"><Setter TargetName="fb" Property="Content" Value="↩ Fallback" /></DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ContentControl.ContentTemplate>
+                        </ContentControl>
+                        <TextBlock Text="{Binding FallbackText}" Foreground="{StaticResource Dim}" FontSize="15" Margin="0,0,0,8" />
+                        <WrapPanel Margin="0,2,0,0">
+                            <Button x:Name="FallbackToPrimary" Content="Fallback: Windows primary" Command="{Binding UsePrimaryFallbackCommand}" />
+                            <Button Content="Rescan displays" Command="{Binding RescanDisplaysCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="Behavior" Style="{StaticResource SubHead}" />
+                        <Border Style="{StaticResource RowCard}">
+                            <StackPanel>
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Move to the preferred display" Tag="Switch to your preferred display as soon as it is available." IsChecked="{Binding DisplaySettings.AutoSwitchToPreferred}" Command="{Binding SaveSettingsCommand}" />
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Make the preferred display the main display when extending" Tag="When Gaming Hub extends the desktop (PS triple-press or Extend), Windows also uses the preferred display as its main display, with the taskbar and new windows. Switching back to one screen makes your other display the main one again." IsChecked="{Binding DisplaySettings.MakePreferredMainOnExtend}" Command="{Binding SaveSettingsCommand}" />
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Return to the fallback display" Tag="Move back to the fallback display when the preferred display is no longer available." IsChecked="{Binding DisplaySettings.ReturnToFallback}" Command="{Binding SaveSettingsCommand}" />
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Open when the preferred display connects" Tag="Bring Gaming Hub to the front when the preferred display connects. Skipped while a game is running." IsChecked="{Binding DisplaySettings.AutoOpenOnPreferredConnect}" Command="{Binding SaveSettingsCommand}" />
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Remember the last display" Tag="Use the display Gaming Hub was last shown on when the preferred display is unavailable." IsChecked="{Binding DisplaySettings.RememberLastDisplay}" Command="{Binding SaveSettingsCommand}" />
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Hide when the preferred display disconnects" Tag="Hide Gaming Hub instead of moving it to the fallback display." IsChecked="{Binding DisplaySettings.CloseOnDisconnect}" Command="{Binding SaveSettingsCommand}" />
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Full screen" Tag="Fill the entire display without window borders." IsChecked="{Binding DisplaySettings.Fullscreen}" Command="{Binding SaveSettingsCommand}" />
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Display notifications" Tag="Show a notification when a display is connected or disconnected." IsChecked="{Binding DisplaySettings.ConnectionNotifications}" Command="{Binding SaveSettingsCommand}" />
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Style="{StaticResource Note}"
+                                   Text="Windows often keeps a TV listed after it is switched off over HDMI, so its power state cannot be detected reliably. Gaming Hub never changes your primary display, resolution, refresh rate or HDR settings." />
+                    </StackPanel>
+
+                    <!-- Sound -->
+                    <StackPanel Visibility="{Binding SettingsSection.Name, Converter={StaticResource Is}, ConverterParameter=Sound}">
+                        <TextBlock Text="Sound" Style="{StaticResource PageTitle}" />
+                        <Border Style="{StaticResource RowCard}">
+                            <StackPanel>
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Route sound to the TV" Tag="Play sound through the TV while Gaming Hub is on it, and restore your previous device when it returns." IsChecked="{Binding AppSettings.AutoAudioSwitch}" Command="{Binding SaveSettingsCommand}" />
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Navigation sounds" Tag="Play a subtle sound when you move or select." IsChecked="{Binding AppSettings.NavigationSounds}" Command="{Binding SaveSettingsCommand}" />
+                                <DockPanel Style="{StaticResource ValueRow}">
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <ComboBox ItemsSource="{Binding AudioOutputs}" SelectedItem="{Binding SelectedAudioOutput}" MinWidth="380" Margin="0,0,10,0" />
+                                        <Button Content="Refresh" Command="{Binding RefreshAudioCommand}" />
+                                    </StackPanel>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Output device" FontSize="19" />
+                                        <TextBlock Text="The Windows default playback device, used by all apps." Style="{StaticResource RowDesc}" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Controller -->
+                    <StackPanel Visibility="{Binding SettingsSection.Name, Converter={StaticResource Is}, ConverterParameter=Controller}">
+                        <TextBlock Text="Controller" Style="{StaticResource PageTitle}" />
+                        <TextBlock Text="{Binding ControllerStatus}" FontSize="16" Foreground="{StaticResource Dim}" Margin="0,0,0,14" TextWrapping="Wrap" />
+                        <Border Style="{StaticResource RowCard}">
+                            <StackPanel>
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="PS button opens Gaming Hub" Tag="Bring Gaming Hub to the front from the desktop or another app. Inside Gaming Hub, the PS button opens the quick menu." IsChecked="{Binding ControllerSettings.PsButtonOpensHub}" Command="{Binding SaveSettingsCommand}" />
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Quick menu during games" Tag="Press PS for sound, display and game controls. Press Circle to resume. Exclusive fullscreen games may briefly minimize while the menu is open." IsChecked="{Binding ControllerSettings.QuickMenuOverGames}" Command="{Binding SaveSettingsCommand}" />
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Triple-press PS to extend the desktop" Tag="Press PS three times with up to 1.5 seconds between taps to turn on your preferred display (for example the TV) when it's plugged in but not part of the Windows desktop, like Win+P › Extend. Gaming Hub then moves there." IsChecked="{Binding ControllerSettings.PsDoubleExtendsDisplay}" Command="{Binding SaveSettingsCommand}" />
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Touchpad moves the pointer" Tag="Slide a finger on the touchpad to move the pointer and press the touchpad to click, in Gaming Hub and on the desktop. Off while a game is running. Windows doesn't allow it on administrator (UAC) prompts." IsChecked="{Binding ControllerSettings.TouchpadPointer}" Command="{Binding SaveSettingsCommand}" />
+                                <DockPanel Style="{StaticResource ValueRow}">
+                                    <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding TouchpadSpeeds}" SelectedItem="{Binding TouchpadSpeedName}" MinWidth="200" VerticalAlignment="Center" />
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Touchpad speed" FontSize="19" />
+                                        <TextBlock Text="Slow finger movements are precise and quick swipes go further, as on a laptop touchpad." Style="{StaticResource RowDesc}" />
+                                    </StackPanel>
+                                </DockPanel>
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Use FakerInput for the touchpad" Tag="{Binding FakerInputStatus}" IsChecked="{Binding ControllerSettings.UseFakerInput}" Command="{Binding SaveSettingsCommand}" />
+                                <DockPanel Style="{StaticResource ValueRow}">
+                                    <Button DockPanel.Dock="Right" Content="Get FakerInput…" Command="{Binding GetFakerInputCommand}" VerticalAlignment="Center" />
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="FakerInput driver" FontSize="19" />
+                                        <TextBlock Text="A free, open-source virtual mouse driver by the author of DS4Windows. Windows treats its input like a real mouse, so it works where other controller input is blocked. Installing it requires administrator approval." Style="{StaticResource RowDesc}" />
+                                    </StackPanel>
+                                </DockPanel>
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Allow the triple-press during full-screen games" Tag="Off: while a game is running full screen, the triple-press does nothing, because changing the display layout can make a game flicker, minimize, change resolution or crash. On: it extends the desktop anyway." IsChecked="{Binding ControllerSettings.PsButtonOverGames}" Command="{Binding SaveSettingsCommand}" />
+                                <DockPanel Style="{StaticResource ValueRow}">
+                                    <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding LightBarColors}" SelectedItem="{Binding SelectedLightBar}" AutomationProperties.Name="Controller 1 light bar color" MinWidth="200" VerticalAlignment="Center" />
+                                    <TextBlock Text="Controller 1 light bar color" FontSize="19" VerticalAlignment="Center" />
+                                </DockPanel>
+                                <DockPanel Style="{StaticResource ValueRow}">
+                                    <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding LightBarColors}" SelectedItem="{Binding SelectedPlayerTwoLightBar}" AutomationProperties.Name="Controller 2 light bar color" MinWidth="200" VerticalAlignment="Center" />
+                                    <TextBlock Text="Controller 2 light bar color" FontSize="19" VerticalAlignment="Center" />
+                                </DockPanel>
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Vibration" Tag="Give brief feedback when you select an item or switch controllers." IsChecked="{Binding ControllerSettings.Vibration}" Command="{Binding SaveSettingsCommand}" />
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Hide the mouse pointer" Tag="Hide the pointer while you use a controller. Moving the mouse shows it again." IsChecked="{Binding AppSettings.HidePointerWithController}" Command="{Binding SaveSettingsCommand}" />
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Text="Other apps" Style="{StaticResource SubHead}" />
+                        <Border Style="{StaticResource RowCard}">
+                            <StackPanel>
+                                <DockPanel Style="{StaticResource ValueRow}">
+                                    <Button DockPanel.Dock="Right" Content="Open Steam settings" Command="{Binding OpenSteamControllerSettingsCommand}" VerticalAlignment="Center" />
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Steam and the PS button" FontSize="19" />
+                                        <TextBlock Text="Turn off “Guide Button Focuses Steam” in Steam so the PS button opens Gaming Hub while Steam is running." Style="{StaticResource RowDesc}" />
+                                    </StackPanel>
+                                </DockPanel>
+                                <DockPanel Style="{StaticResource ValueRow}">
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <ComboBox ItemsSource="{Binding HelperKinds}" SelectedItem="{Binding Helper}" MinWidth="200" Margin="0,0,10,0" />
+                                        <Button Content="Locate…" Command="{Binding BrowseHelperCommand}" />
+                                    </StackPanel>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Default controller helper" FontSize="19" />
+                                        <TextBlock Text="{Binding HelperStatus}" Style="{StaticResource RowDesc}" />
+                                    </StackPanel>
+                                </DockPanel>
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="{Binding HelperNoPromptLabel}" Tag="Windows asks you to approve once, with the mouse or keyboard. After that the helper starts with the controller alone, with administrator rights." IsChecked="{Binding HelperNoPrompt}" />
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Style="{StaticResource Note}"
+                                   Text="Choose a controller helper for each game in Game settings. Games set up earlier use the default helper. ZerkSense5 requires the usbip-win2 and HidHide drivers, which it can install for you, and asks for administrator permission when it starts, unless you turn on the option above. When Steam, DSX or DS4Windows also send keyboard input, Gaming Hub follows one controller at a time to prevent duplicate input." />
+                    </StackPanel>
+
+                    <!-- Home -->
+                    <StackPanel Visibility="{Binding SettingsSection.Name, Converter={StaticResource Is}, ConverterParameter=Home}">
+                        <TextBlock Text="Home" Style="{StaticResource PageTitle}" />
+                        <Border Style="{StaticResource RowCard}">
+                            <StackPanel>
+                                <DockPanel Style="{StaticResource ValueRow}">
+                                    <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding HomeLimits}" SelectedItem="{Binding HomeLimit}" MinWidth="120" VerticalAlignment="Center" />
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Games on Home" FontSize="19" />
+                                        <TextBlock Text="{Binding HomeUsageText}" Style="{StaticResource RowDesc}" />
+                                    </StackPanel>
+                                </DockPanel>
+                                <DockPanel Style="{StaticResource ValueRow}">
+                                    <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding HomeOrders}" SelectedItem="{Binding HomeOrderMode}" MinWidth="260" VerticalAlignment="Center" />
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Order" FontSize="19" />
+                                        <TextBlock Text="To move a game, select it on Home, press □, then use ← and →. On a keyboard, use Ctrl+← and Ctrl+→." Style="{StaticResource RowDesc}" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Style="{StaticResource Note}" Text="Add games to Home from the Library or from a game's settings." />
+                    </StackPanel>
+
+                    <!-- Library -->
+                    <StackPanel Visibility="{Binding SettingsSection.Name, Converter={StaticResource Is}, ConverterParameter=Library}">
+                        <TextBlock Text="Library" Style="{StaticResource PageTitle}" />
+                        <Border Style="{StaticResource RowCard}">
+                            <StackPanel>
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Download artwork automatically" Tag="Get missing covers and backgrounds from the Steam store and PCGamingWiki." IsChecked="{Binding AppSettings.AutoArtwork}" Command="{Binding SaveSettingsCommand}" />
+                                <DockPanel Style="{StaticResource ValueRow}">
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Content="Scan for games" Command="{Binding RescanLibraryCommand}" Margin="0,0,10,0" />
+                                        <Button Content="Show hidden games" Command="{Binding UnhideAllCommand}" />
+                                    </StackPanel>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Games" FontSize="19" />
+                                        <TextBlock Text="Find games from Steam, Epic Games, GOG, Ubisoft Connect and your shortcut folders." Style="{StaticResource RowDesc}" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Text="Game shortcut folders" Style="{StaticResource SubHead}" />
+                        <Border Style="{StaticResource RowCard}">
+                            <StackPanel>
+                                <ItemsControl ItemsSource="{Binding GameFolders}" Focusable="False">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <DockPanel Style="{StaticResource ValueRow}">
+                                                <Button DockPanel.Dock="Right" Content="Remove" VerticalAlignment="Center"
+                                                        Command="{Binding DataContext.RemoveGameFolderCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
+                                                <TextBlock Text="{Binding}" FontSize="17" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                            </DockPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <DockPanel Style="{StaticResource ValueRow}">
+                                    <Button DockPanel.Dock="Right" Content="Add folder…" Command="{Binding AddGameFolderCommand}" VerticalAlignment="Center" />
+                                    <TextBlock Text="Shortcuts in these folders are added automatically. Store launchers, utilities and Steam or Epic shortcuts are skipped." Style="{StaticResource RowDesc}" VerticalAlignment="Center" />
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- System -->
+                    <StackPanel Visibility="{Binding SettingsSection.Name, Converter={StaticResource Is}, ConverterParameter=System}">
+                        <TextBlock Text="System" Style="{StaticResource PageTitle}" />
+                        <Border Style="{StaticResource RowCard}">
+                            <StackPanel>
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Start with Windows" Tag="Start Gaming Hub when you sign in, so the PS button can open it right away." IsChecked="{Binding AppSettings.StartWithWindows}" Command="{Binding SaveSettingsCommand}" />
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Start in the notification area" Tag="Keep Gaming Hub out of the way when it starts with Windows." IsChecked="{Binding AppSettings.StartMinimizedToTray}" Command="{Binding SaveSettingsCommand}" />
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Console Mode" Tag="Open Gaming Hub in full screen as soon as Windows starts." IsChecked="{Binding AppSettings.ConsoleMode}" Command="{Binding SaveSettingsCommand}" />
+                                <CheckBox Style="{StaticResource ToggleRow}" x:Name="ReducedMotionToggle" Content="Reduced motion" Tag="Minimize animations and transitions." IsChecked="{Binding AppSettings.ReducedMotion}" Command="{Binding SaveSettingsCommand}" />
+                                <DockPanel Style="{StaticResource ValueRow}">
+                                    <Button DockPanel.Dock="Right" Content="Notification settings…" Command="{Binding OpenNotificationSettingsCommand}" VerticalAlignment="Center" />
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Do not disturb" FontSize="19" />
+                                        <TextBlock Text="To silence notifications while Gaming Hub is in full screen, turn on “When using an app in full-screen mode” in Windows settings." Style="{StaticResource RowDesc}" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+                        <WrapPanel Margin="0,18,0,0">
+                            <Button Content="⏻ Power…" Command="{Binding OpenPowerCommand}" />
+                            <Button Content="Exit Gaming Hub" Command="{Binding ExitCommand}" />
+                        </WrapPanel>
+                    </StackPanel>
+
+                    <!-- About -->
+                    <StackPanel Visibility="{Binding SettingsSection.Name, Converter={StaticResource Is}, ConverterParameter=About}">
+                        <TextBlock Text="About" Style="{StaticResource PageTitle}" />
+                        <Border Style="{StaticResource RowCard}">
+                            <StackPanel Margin="18,16">
+                                <TextBlock Text="{Binding AppVersion, StringFormat='Gaming Hub {0}'}" FontSize="26" />
+                                <TextBlock Text="Controller-first game launcher for your PC and TV" FontSize="16" Foreground="{StaticResource Dim}" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding DataDir, StringFormat='Data: {0}'}" FontSize="14" Foreground="{StaticResource Dim}" Margin="0,10,0,0" />
+                                <WrapPanel Margin="0,12,0,0">
+                                    <Button Content="Check for updates" Command="{Binding CheckForUpdatesCommand}" />
+                                    <Button Content="Download installer" Command="{Binding DownloadUpdateCommand}" Margin="10,0,0,0"
+                                            Visibility="{Binding UpdateInstaller, Converter={StaticResource NotNull}}" />
+                                </WrapPanel>
+                                <TextBlock Text="{Binding UpdateStatus}" TextWrapping="Wrap" FontSize="16" Margin="0,8,0,0"
+                                           AutomationProperties.LiveSetting="Polite" Visibility="{Binding UpdateStatus, Converter={StaticResource NotNull}}" />
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Text="Data" Style="{StaticResource SubHead}" />
+                        <WrapPanel>
+                            <!-- even gaps, also when the row wraps onto a second line (narrow layouts such as a 4K TV at 300%) -->
+                            <WrapPanel.Resources>
+                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                    <Setter Property="Margin" Value="0,0,12,12" />
+                                </Style>
+                            </WrapPanel.Resources>
+                            <Button Content="Open data and logs folder" Command="{Binding OpenLogsCommand}" />
+                            <Button Content="Export diagnostics" Command="{Binding ExportDiagnosticsCommand}" />
+                            <Button Content="Back up settings and library" Command="{Binding BackupCommand}" />
+                            <Button Content="Restore backup" Command="{Binding RestoreCommand}" />
+                        </WrapPanel>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+            </DockPanel>
+        </Grid>
+
+        <!-- Hints: a small pointer to the Controls list (Create button / F4) instead of a permanent bar -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="64,8,64,26">
+            <StackPanel Orientation="Horizontal" Visibility="{Binding UsingController, Converter={StaticResource Vis}}">
+                <Border Style="{StaticResource KeyCap}" ToolTip="Create button"><Path Style="{StaticResource FaceIcon}" Data="M5,5 L5,0 M2.6,6.4 L0,3.4 M7.4,6.4 L10,3.4" /></Border>
+                <TextBlock Text="Controls" Style="{StaticResource KeyLabel}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Visibility="{Binding UsingController, Converter={StaticResource NotVis}}">
+                <Border Style="{StaticResource KeyCap}"><TextBlock Text="F4" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,2" /></Border>
+                <TextBlock Text="Controls" Style="{StaticResource KeyLabel}" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Controls list: controller and keyboard side by side. Create / F4 / ○ / Esc closes it. -->
+        <Grid Grid.RowSpan="3" Background="#B8000000" Visibility="{Binding ShowControls, Converter={StaticResource Vis}}">
+            <Border Background="#F51F1F1F" CornerRadius="20" Padding="40,32" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <Viewbox StretchDirection="DownOnly">
+                    <StackPanel>
+                        <TextBlock Text="Controls" FontWeight="SemiBold" FontSize="30" Margin="0,0,0,22" />
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="70" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="DualSense" Style="{StaticResource KeyHead}" />
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><TextBlock Text="D-pad" /></Border><TextBlock Text="Navigate" Style="{StaticResource KeyLabel}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><Path Style="{StaticResource FaceIcon}" Data="M0,0 L10,10 M10,0 L0,10" /></Border><TextBlock Text="Select / Play" Style="{StaticResource KeyLabel}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><Path Style="{StaticResource FaceIcon}" Data="M5,0 A5,5 0 1 1 4.99,0 Z" /></Border><TextBlock Text="Back" Style="{StaticResource KeyLabel}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><TextBlock Text="L1  R1" /></Border><TextBlock Text="Switch tab" Style="{StaticResource KeyLabel}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><Path Style="{StaticResource FaceIcon}" Data="M5,0 L10,9 L0,9 Z" /></Border><TextBlock Text="Favorite" Style="{StaticResource KeyLabel}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><Path Style="{StaticResource FaceIcon}" Data="M0,0 H10 V10 H0 Z" /></Border><TextBlock Text="Move a game on Home" Style="{StaticResource KeyLabel}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><TextBlock Text="Options" /></Border><TextBlock Text="Game settings" Style="{StaticResource KeyLabel}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><TextBlock Text="PS" /></Border><TextBlock Text="Quick menu" Style="{StaticResource KeyLabel}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><TextBlock Text="PS ×3" /></Border><TextBlock Text="Extend to your TV (if turned on)" Style="{StaticResource KeyLabel}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><TextBlock Text="Hold PS" /></Border><TextBlock Text="Hide Gaming Hub" Style="{StaticResource KeyLabel}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><TextBlock Text="Touchpad" /></Border><TextBlock Text="Move the pointer, press to click" Style="{StaticResource KeyLabel}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}" ToolTip="Create button"><Path Style="{StaticResource FaceIcon}" Data="M5,5 L5,0 M2.6,6.4 L0,3.4 M7.4,6.4 L10,3.4" /></Border><TextBlock Text="Show or hide this list" Style="{StaticResource KeyLabel}" /></StackPanel>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Keyboard and mouse" Style="{StaticResource KeyHead}" />
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><TextBlock Text="Enter" /></Border><TextBlock Text="Select / Play" Style="{StaticResource KeyLabel}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><TextBlock Text="Esc" /></Border><TextBlock Text="Back" Style="{StaticResource KeyLabel}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><TextBlock Text="Arrows" /></Border><TextBlock Text="Move" Style="{StaticResource KeyLabel}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><TextBlock Text="F1" /></Border><TextBlock Text="Home" Style="{StaticResource KeyLabel}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><TextBlock Text="F2" /></Border><TextBlock Text="Settings" Style="{StaticResource KeyLabel}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><TextBlock Text="F3" /></Border><TextBlock Text="Quick menu" Style="{StaticResource KeyLabel}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><TextBlock Text="F5" /></Border><TextBlock Text="Minimize Gaming Hub" Style="{StaticResource KeyLabel}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><TextBlock Text="Ctrl  ←  →" /></Border><TextBlock Text="Move a game on Home" Style="{StaticResource KeyLabel}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><TextBlock Text="Right-click" /></Border><TextBlock Text="Game settings" Style="{StaticResource KeyLabel}" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Style="{StaticResource KeyRow}"><Border Style="{StaticResource ShortcutCap}"><TextBlock Text="F4" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,2" /></Border><TextBlock Text="Show or hide this list" Style="{StaticResource KeyLabel}" /></StackPanel>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Viewbox>
+            </Border>
+        </Grid>
+
+        <!-- Add / Edit game -->
+        <Grid KeyboardNavigation.DirectionalNavigation="Contained" KeyboardNavigation.TabNavigation="Cycle" Grid.RowSpan="3" Background="#CC080808" Visibility="{Binding IsEditing, Converter={StaticResource Vis}}">
+            <Border Background="{StaticResource Card}" CornerRadius="16" Padding="36" MaxWidth="980" Margin="20,24" VerticalAlignment="Center">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+                        <TextBlock Text="{Binding EditTitle}" FontSize="32" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Visibility="{Binding EditingExisting, Converter={StaticResource Vis}}" FontSize="18" Foreground="{StaticResource Fg}" Margin="0,6,0,0" TextWrapping="Wrap">
+                            <Run Text="Library source" FontWeight="SemiBold" /><Run Text="  ·  " /><Run Text="{Binding EditImportDescription, Mode=OneWay}" />
+                        </TextBlock>
+                    </StackPanel>
+                    <ScrollViewer x:Name="AddLayer" VerticalScrollBarVisibility="Auto" Focusable="False">
+                      <StackPanel>
+                        <StackPanel Visibility="{Binding EditIsManual, Converter={StaticResource Vis}}">
+                            <TextBlock Text="Executable" Foreground="{StaticResource Dim}" />
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="Browse…" Command="{Binding BrowseExeCommand}" Margin="12,0,0,8" />
+                                <TextBox Text="{Binding NewExe, UpdateSourceTrigger=PropertyChanged}" />
+                            </DockPanel>
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding EditIsManual, Converter={StaticResource NotVis}}">
+                            <TextBlock Text="Launch location (blank = default)" Foreground="{StaticResource Dim}" />
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="Browse…" Command="{Binding BrowseCustomExeCommand}" Margin="12,0,0,8" />
+                                <TextBox Text="{Binding NewCustomExe, UpdateSourceTrigger=PropertyChanged}" />
+                            </DockPanel>
+                            <TextBlock Text="{Binding DefaultLaunchText}" FontSize="14" Foreground="{StaticResource Dim}" Margin="0,0,0,12" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <TextBlock Text="Name" Foreground="{StaticResource Dim}" />
+                        <TextBox Text="{Binding NewName, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Text="Launch arguments (e.g. a game's own monitor/fullscreen switches)" Foreground="{StaticResource Dim}" />
+                        <TextBox Text="{Binding NewArgs, UpdateSourceTrigger=PropertyChanged}" />
+                        <StackPanel Visibility="{Binding EditIsManual, Converter={StaticResource Vis}}">
+                            <TextBlock Text="Working directory (blank = executable folder)" Foreground="{StaticResource Dim}" />
+                            <TextBox Text="{Binding NewWorkDir, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <TextBlock Text="Collections (comma separated)" Foreground="{StaticResource Dim}" />
+                        <TextBox Text="{Binding NewCategories, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Text="Cover / background art" Foreground="{StaticResource Dim}" />
+                        <DockPanel Margin="0,0,0,4">
+                            <Button DockPanel.Dock="Right" Content="Cover…" Command="{Binding BrowseImageCommand}" CommandParameter="cover" Margin="12,0,0,8" />
+                            <TextBox Text="{Binding NewCover, UpdateSourceTrigger=PropertyChanged}" />
+                        </DockPanel>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="Background…" Command="{Binding BrowseImageCommand}" CommandParameter="background" Margin="12,0,0,8" />
+                            <TextBox Text="{Binding NewBackground, UpdateSourceTrigger=PropertyChanged}" />
+                        </DockPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <Button Content="Find art automatically" Command="{Binding FindArtworkCommand}" />
+                            <Button Content="Search images online…" Command="{Binding SearchArtworkCommand}" />
+                        </StackPanel>
+                        <TextBlock Text="Launch display" Foreground="{StaticResource Dim}" />
+                        <ComboBox ItemsSource="{Binding TargetOptions}" SelectedItem="{Binding NewTarget}" HorizontalAlignment="Left" MinWidth="460" />
+                        <TextBlock Text="If that display is unavailable" Foreground="{StaticResource Dim}" />
+                        <ComboBox ItemsSource="{Binding Fallbacks}" SelectedItem="{Binding NewFallback}" HorizontalAlignment="Left" MinWidth="460" />
+                        <Border Background="{StaticResource ControlSurface}" CornerRadius="14" Padding="6" Margin="0,12,0,22">
+                            <StackPanel>
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Show on Home" Tag="Show this game in the Home row. When off, it appears only in the Library." IsChecked="{Binding NewShowOnHome}" />
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Move the window to the launch display" Tag="Place windowed and borderless games on the launch display. Exclusive full-screen games can't be moved." IsChecked="{Binding NewAutoPlace}" />
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Run as administrator without a prompt" Tag="For games that ask for admin rights on every launch. Windows asks you to approve once, with the mouse or keyboard; after that the game starts with the controller alone. Gaming Hub may not be able to move its window." IsChecked="{Binding NewRunElevated}" />
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Pause while the quick menu is open" Tag="The game freezes so it ignores the controller while the PS menu is open, and continues when you close it. Leave this off for online and anti-cheat games: they may disconnect or flag your account." IsChecked="{Binding NewAllowPause}" />
+                                <DockPanel Style="{StaticResource ValueRow}">
+                                    <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding HelperChoices}" SelectedItem="{Binding NewHelperChoice}" MinWidth="200" VerticalAlignment="Center" />
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Controller helper" FontSize="19" />
+                                        <TextBlock Text="{Binding GameHelperStatus}" Style="{StaticResource RowDesc}" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Save" Command="{Binding SaveGameCommand}" Background="{StaticResource Accent}" />
+                            <Button Content="Cancel" Command="{Binding CancelEditCommand}" />
+                            <Button Content="{Binding RemoveLabel}" Command="{Binding RemoveGameCommand}" Background="#393939" Margin="40,0,0,0"
+                                    Visibility="{Binding EditingExisting, Converter={StaticResource Vis}}" />
+                        </StackPanel>
+                      </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- Display chooser (per-game fallback "Ask") -->
+        <Grid KeyboardNavigation.DirectionalNavigation="Contained" KeyboardNavigation.TabNavigation="Cycle" Grid.RowSpan="3" Background="#E6080808" Visibility="{Binding ChoosingFor, Converter={StaticResource NotNull}}">
+            <Border x:Name="ChooseLayer" Background="{StaticResource Card}" CornerRadius="16" Padding="40" MinWidth="700" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="{Binding ChoosingFor.Name, StringFormat='Where should {0} start?'}" FontSize="30" Margin="0,0,0,20" />
+                    <ItemsControl ItemsSource="{Binding Displays}" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Content="{Binding Title}" IsEnabled="{Binding CanUse}" HorizontalAlignment="Stretch" Margin="0,0,0,10"
+                                        Command="{Binding DataContext.ChooseDisplayCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- First run -->
+        <Grid KeyboardNavigation.DirectionalNavigation="Contained" KeyboardNavigation.TabNavigation="Cycle" Grid.RowSpan="3" Background="#F2080808" Visibility="{Binding IsFirstRun, Converter={StaticResource Vis}}">
+            <ScrollViewer x:Name="FirstRunLayer" VerticalScrollBarVisibility="Auto" Focusable="False" VerticalAlignment="Center">
+                <StackPanel Width="1100" Margin="0,40">
+                    <TextBlock Text="Welcome to Gaming Hub" FontSize="48" FontWeight="Light" />
+                    <TextBlock Text="1 · Which display should Gaming Hub use? (you can change this later in Settings)" FontSize="22" Margin="0,28,0,12" />
+                    <ItemsControl ItemsSource="{Binding Displays}" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel Margin="0,0,0,10">
+                                    <Button DockPanel.Dock="Right" Content="Use this display" Command="{Binding DataContext.SetPreferredCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Title}" FontSize="20" />
+                                        <TextBlock Text="{Binding Details}" FontSize="15" Foreground="{StaticResource Dim}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="{Binding PreferredStatus, StringFormat=Preferred screen · {0}}" FontSize="16" Foreground="{StaticResource FocusHighlight}" />
+                    <TextBlock Text="2 · Controller" FontSize="22" Margin="0,28,0,6" />
+                    <TextBlock Text="{Binding ControllerStatus}" FontSize="18" Foreground="{StaticResource Dim}" />
+                    <TextBlock Text="Turn on your DualSense (USB or Bluetooth). Press ✕ to select, ○ to go back." FontSize="16" Foreground="{StaticResource Dim}" />
+                    <TextBlock Text="3 · Games" FontSize="22" Margin="0,28,0,6" />
+                    <TextBlock Text="{Binding Toast}" FontSize="16" Foreground="{StaticResource Dim}" TextWrapping="Wrap" />
+                    <Button Content="Scan again" Command="{Binding RescanLibraryCommand}" HorizontalAlignment="Left" Margin="0,8,0,0" />
+                    <Button Content="Start using Gaming Hub" Command="{Binding FinishFirstRunCommand}" Background="{StaticResource Accent}" HorizontalAlignment="Left" Margin="0,36,0,0" FontSize="22" />
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- Test Display overlay -->
+        <Grid KeyboardNavigation.DirectionalNavigation="Contained" KeyboardNavigation.TabNavigation="Cycle" Grid.RowSpan="3" Background="#E6080808" Visibility="{Binding Testing, Converter={StaticResource NotNull}}">
+            <Border x:Name="TestLayer" Background="{StaticResource Card}" CornerRadius="16" Padding="40" MaxWidth="1100" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="Is Gaming Hub showing correctly on this display?" FontSize="32" />
+                    <TextBlock Text="{Binding Testing.Title}" FontSize="26" Margin="0,20,0,4" />
+                    <TextBlock Text="{Binding Testing.Details}" FontSize="18" Foreground="{StaticResource Dim}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding Testing.IdentityText}" FontSize="15" Foreground="{StaticResource Dim}" Margin="0,4,0,20" />
+                    <TextBlock Text="{Binding TestCountdown, StringFormat='Reverting automatically in {0} s'}" FontSize="20" Foreground="#CDCDCD" Margin="0,0,0,20" />
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Keep as preferred" Command="{Binding ConfirmTestCommand}" Background="{StaticResource Accent}" />
+                        <Button x:Name="RevertButton" Content="Revert" Command="{Binding RevertTestCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Controller on-screen keyboard (keys built in code) -->
+        <Grid x:Name="OskOverlay" Grid.RowSpan="3" Background="#B3080808" Visibility="Collapsed">
+            <Border Background="{StaticResource Card}" CornerRadius="16" Padding="32" Margin="0,0,0,80" VerticalAlignment="Bottom" HorizontalAlignment="Center">
+                <StackPanel>
+                    <Border Background="#121212" CornerRadius="8" Padding="16,10" Margin="4,0,4,16" MinWidth="760">
+                        <TextBlock x:Name="OskText" FontSize="28" />
+                    </Border>
+                    <StackPanel x:Name="OskKeys" KeyboardNavigation.DirectionalNavigation="Contained" />
+                    <TextBlock Margin="4,14,4,0" FontSize="15" Foreground="{StaticResource Dim}"
+                               Text="✕ type   □ delete   △ space   ○ / Options done" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- "Starting…" while a game launches (until its window appears) -->
+        <Grid KeyboardNavigation.DirectionalNavigation="Contained" KeyboardNavigation.TabNavigation="Cycle" Grid.RowSpan="3" Background="#F20B0B0B" Visibility="{Binding Launching, Converter={StaticResource NotNull}}">
+            <Image Source="{Binding Launching.Hero, Converter={StaticResource Img}, ConverterParameter=1920}" Stretch="UniformToFill" Opacity="0.35">
+                <Image.Effect><BlurEffect Radius="40" /></Image.Effect>
+            </Image>
+            <StackPanel x:Name="LaunchLayer" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <Border Width="240" Height="360" CornerRadius="14" HorizontalAlignment="Center" Background="{StaticResource MissingArt}"><Border CornerRadius="14">
+                    <Border.Background><ImageBrush Stretch="UniformToFill" ImageSource="{Binding Launching.Cover, Converter={StaticResource Img}, ConverterParameter=480}" /></Border.Background></Border>
+                </Border>
+                <TextBlock Text="{Binding Launching.Name, StringFormat='Starting {0}…'}" FontSize="36" Margin="0,28,0,6" HorizontalAlignment="Center" />
+                <TextBlock Text="Waiting for the game window — store launchers can take a little while." FontSize="17" Foreground="{StaticResource Dim}" HorizontalAlignment="Center" />
+                <Button Content="Back to Gaming Hub" Command="{Binding DismissLaunchCommand}" HorizontalAlignment="Center" Margin="0,28,0,0" />
+            </StackPanel>
+        </Grid>
+
+        <!-- Power menu -->
+        <Grid KeyboardNavigation.DirectionalNavigation="Contained" KeyboardNavigation.TabNavigation="Cycle" Grid.RowSpan="3" Background="#B8000000" Visibility="{Binding PowerMenuOpen, Converter={StaticResource Vis}}">
+            <!-- A short vertical list in the quick menu's style: flat rows (icon, name, one-line note), white when focused -->
+            <Border x:Name="PowerLayer" Background="#F51F1F1F" CornerRadius="22" Padding="28" Width="460" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <Border.Resources>
+                    <Style x:Key="PowerRow" TargetType="Button">
+                        <Setter Property="Foreground" Value="{StaticResource Fg}" />
+                        <Setter Property="Margin" Value="0,0,0,8" />
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="b" CornerRadius="20" Background="{StaticResource NeutralAction}" Padding="20,14">
+                                        <DockPanel>
+                                            <TextBlock Text="{TemplateBinding Tag}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="22" VerticalAlignment="Center" Margin="0,0,18,0" />
+                                            <ContentPresenter VerticalAlignment="Center" />
+                                        </DockPanel>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#595959" /></Trigger>
+                                        <Trigger Property="IsKeyboardFocused" Value="True">
+                                            <Setter TargetName="b" Property="Background" Value="White" />
+                                            <Setter Property="Foreground" Value="#121212" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                    <Style x:Key="RowTitle" TargetType="TextBlock"><Setter Property="FontSize" Value="19" /></Style>
+                    <Style x:Key="RowNote" TargetType="TextBlock"><Setter Property="FontSize" Value="13" /><Setter Property="Opacity" Value="0.65" /><Setter Property="Margin" Value="0,2,0,0" /></Style>
+                </Border.Resources>
+                <StackPanel>
+                    <TextBlock Text="Power" FontSize="28" FontWeight="SemiBold" Margin="4,0,0,18" />
+                    <Button Style="{StaticResource PowerRow}" Tag="&#xE708;" Command="{Binding PowerCommand}" CommandParameter="sleep">
+                        <StackPanel><TextBlock Text="Sleep" Style="{StaticResource RowTitle}" /><TextBlock Text="Pause the PC; wake it with the power button" Style="{StaticResource RowNote}" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource PowerRow}" Tag="&#xE777;" Command="{Binding PowerCommand}" CommandParameter="restart">
+                        <StackPanel><TextBlock Text="{Binding RestartLabel}" Style="{StaticResource RowTitle}" /><TextBlock Text="Restart Windows" Style="{StaticResource RowNote}" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource PowerRow}" Tag="&#xE7E8;" Command="{Binding PowerCommand}" CommandParameter="shutdown">
+                        <StackPanel><TextBlock Text="{Binding ShutdownLabel}" Style="{StaticResource RowTitle}" /><TextBlock Text="Turn the PC off" Style="{StaticResource RowNote}" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource PowerRow}" Tag="&#xE89F;" Command="{Binding ExitCommand}" Margin="0">
+                        <StackPanel><TextBlock Text="Exit Gaming Hub" Style="{StaticResource RowTitle}" /><TextBlock Text="Close the app; the PC keeps running" Style="{StaticResource RowNote}" /></StackPanel>
+                    </Button>
+                    <TextBlock Text="Restart and Shut down ask for a second press.   ○  Cancel" FontSize="13" Foreground="{StaticResource Dim}" Margin="4,16,0,0" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Toast -->
+        <Border Grid.Row="2" HorizontalAlignment="Right" Margin="0,0,64,72" Background="#F0292929" CornerRadius="10" Padding="20,12" MaxWidth="900"
+                Visibility="{Binding Toast, Converter={StaticResource NotNull}}">
+            <TextBlock Text="{Binding Toast}" FontSize="18" TextWrapping="Wrap" />
+        </Border>
+    </Grid>
+</Window>
