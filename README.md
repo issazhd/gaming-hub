@@ -1,6 +1,10 @@
 # Gaming Hub for Windows
 
-Gaming Hub is a fullscreen game launcher for Windows 11 x64. Browse games with a DualSense controller or keyboard, choose a monitor or TV, and open the Quick Menu for sound, displays and game controls.
+Gaming Hub gives your Windows 11 x64 gaming PC a fullscreen, controller-first interface. Pick a game from the artwork carousel on Home, browse your full Library, or change settings from the couch with a DualSense.
+
+**Take your session to the TV.** Choose your TV as the preferred display and enable **Triple-press PS to extend the desktop** in Settings → Controller. When the TV is connected but Windows is using only your monitor, press PS three times. Gaming Hub extends the Windows desktop and moves the launcher onto the TV.
+
+**Keep the controller in your hands.** Pin your own games to Home, search and filter your Library, and choose a launch display per game. During play, open the PS Quick Menu for game controls, display selection, controller batteries, and volume. Press Circle to return to the game. Optional audio switching can follow the hub to the TV.
 
 **[Download the Windows installer](https://github.com/issazhd/gaming-hub/releases/latest)**
 
