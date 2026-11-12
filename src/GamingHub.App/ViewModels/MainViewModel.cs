@@ -937,8 +937,13 @@ public sealed partial class MainViewModel : ObservableObject
         SaveSettings();
     }
 
-    [RelayCommand]
-    public Task RescanLibrary() => Rescan(quiet: false);
+    Task _manualScan = Task.CompletedTask;
+
+    // WPF drops keyboard focus when an async command disables its button.
+    // Keep the button enabled and let repeated presses await the same scan.
+    [RelayCommand(AllowConcurrentExecutions = true)]
+    public Task RescanLibrary() =>
+        _manualScan.IsCompleted ? _manualScan = Rescan(quiet: false) : _manualScan;
 
     /// <summary>Quiet scans (startup, folder changes) only speak up when the library actually changed.</summary>
     public async Task Rescan(bool quiet)
