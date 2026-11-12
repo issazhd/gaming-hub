@@ -18,6 +18,20 @@ Each release includes a SHA-256 checksum. To verify the download in PowerShell, 
 
 To check for new releases, open **Settings → About → Check for updates**.
 
+## Screenshots
+
+**Home** · Browse your pinned games with the DualSense.
+
+![Home carousel with Red Dead Redemption 2 selected](docs/screenshots/home.jpg)
+
+**Library** · Search, filter, and launch games from the cover grid.
+
+![Library showing game covers, search, and filters](docs/screenshots/library.jpg)
+
+**PS Quick Menu** · Press PS to bring up game, sound, controller, and display controls.
+
+![PS Quick Menu open alongside the Home screen](docs/screenshots/ps-quick-menu.jpg)
+
 ## Build a fork
 
 Fork this repository and clone your fork on Windows. Install the .NET 10 SDK, then run:
