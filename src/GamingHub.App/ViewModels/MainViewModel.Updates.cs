@@ -12,6 +12,10 @@ public sealed partial class MainViewModel
     const string ReleaseApi = "https://api.github.com/repos/issazhd/gaming-hub/releases/latest";
     static readonly HttpClient UpdateClient = new() { Timeout = TimeSpan.FromSeconds(12) };
 
+    static readonly long InstalledBuild = long.TryParse(typeof(MainViewModel).Assembly
+        .GetCustomAttributes<AssemblyMetadataAttribute>().FirstOrDefault(a => a.Key == "ReleaseBuild")?.Value, out var stamp) ? stamp : 0;
+    public string BuildLabel => InstalledBuild > 0 ? $"Build {InstalledBuild}" : App.IsDev ? "Development build" : "Local build";
+
     [ObservableProperty] string? _updateStatus;
     [ObservableProperty] Uri? _updateInstaller;
 
@@ -27,10 +31,7 @@ public sealed partial class MainViewModel
             using var response = await UpdateClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
             using var release = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-            var stamp = typeof(MainViewModel).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
-                .FirstOrDefault(a => a.Key == "ReleaseBuild")?.Value;
-            long.TryParse(stamp, out var installedBuild);
-            (UpdateStatus, UpdateInstaller) = ReadUpdate(release.RootElement, Version.Parse(AppVersion), installedBuild);
+            (UpdateStatus, UpdateInstaller) = ReadUpdate(release.RootElement, Version.Parse(AppVersion), InstalledBuild);
         }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or JsonException or FormatException or InvalidOperationException or KeyNotFoundException)
         {

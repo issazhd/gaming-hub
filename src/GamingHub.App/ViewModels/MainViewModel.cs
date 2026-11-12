@@ -88,7 +88,9 @@ public sealed partial class MainViewModel : ObservableObject
         {
             if (!DisplaySettings.MakePreferredMainOnExtend || d.GdiName is not { } gdi) return;
             await Task.Delay(1500);   // let Windows finish bringing the display up
+            bool hadFocus = _placement.IsHubActive;
             var err = Infrastructure.Displays.DisplayTopology.SetMain(gdi);
+            if (err is null && hadFocus) _placement.GoToPreferredSoon(restoreFocus: true, notifyExtended: false);
             Serilog.Log.Information("Make {Display} the main display after extending: {Result}", d.Identity, err ?? "ok");
             ShowToast(err is null ? $"{d.Identity.FriendlyName} is now the main display" : $"Couldn't make {d.Identity.FriendlyName} the main display: {err}");
             _watcher.Schedule("main display changed");
@@ -425,7 +427,7 @@ public sealed partial class MainViewModel : ObservableObject
         int rc = Infrastructure.Displays.DisplayTopology.Extend();
         Serilog.Log.Information("Extend to {Display} requested: SetDisplayConfig rc={Rc}", d.Info.Identity, rc);
         ShowToast(rc == 0 ? $"Extending the desktop to {d.Info.Identity.FriendlyName}…" : $"Windows couldn't extend the desktop (error {rc}). Try Win+P › Extend.");
-        if (rc == 0 && d.IsPreferred) _placement.GoToPreferredSoon(extended: true);
+        if (rc == 0 && d.IsPreferred) _placement.GoToPreferredSoon(restoreFocus: QuickMenuWindow.Current?.OverGame != true);
         _watcher.Schedule("extend requested");
     }
     /// <summary>Makes a display the Windows main display (taskbar, new windows) — only when the user presses the button.
@@ -442,7 +444,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     /// <summary>PS triple press (when enabled): extend the Windows desktop to the preferred display if it is
     /// connected but not part of the desktop. The display watcher then moves the launcher there as usual.</summary>
-    public void ExtendToPreferredDisplay()
+    public void ExtendToPreferredDisplay(bool fromGame)
     {
         if (!ControllerSettings.PsDoubleExtendsDisplay) { Serilog.Log.Information("PS triple press ignored: setting off"); return; }
         if (DisplaySettings.Preferred is not { } pref) { ShowToast("Choose a preferred display in Settings first"); return; }
@@ -451,9 +453,8 @@ public sealed partial class MainViewModel : ObservableObject
         if (m is null) { ShowToast($"{pref.FriendlyName} isn't connected (is it on, and on the right input?)"); return; }
         // Already part of the desktop: nothing to extend. The second press just closed the quick menu, as a normal press would.
         if (m.IsActive) return;
-        _placement.GoToPreferredSoon();   // move there once it is active, even if auto-switch is off
-        _placement.GoToPreferredSoon(extended: true);
         int rc = Infrastructure.Displays.DisplayTopology.Extend();
+        if (rc == 0) _placement.GoToPreferredSoon(restoreFocus: !fromGame);
         Serilog.Log.Information("Extend requested: SetDisplayConfig rc={Rc}", rc);
         ShowToast(rc == 0 ? $"Extending the desktop to {pref.FriendlyName}…" : $"Windows couldn't extend the desktop (error {rc}). Try Win+P › Extend.");
         _watcher.Schedule("extended to preferred display");

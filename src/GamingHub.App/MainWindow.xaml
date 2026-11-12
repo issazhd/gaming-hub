@@ -981,6 +981,7 @@
                         <Border Style="{StaticResource RowCard}">
                             <StackPanel Margin="18,16">
                                 <TextBlock Text="{Binding AppVersion, StringFormat='Gaming Hub {0}'}" FontSize="26" />
+                                <TextBlock Text="{Binding BuildLabel}" FontSize="16" Foreground="{StaticResource Dim}" />
                                 <TextBlock Text="Controller-first game launcher for your PC and TV" FontSize="16" Foreground="{StaticResource Dim}" Margin="0,4,0,0" />
                                 <TextBlock Text="{Binding DataDir, StringFormat='Data: {0}'}" FontSize="14" Foreground="{StaticResource Dim}" Margin="0,10,0,0" />
                                 <WrapPanel Margin="0,12,0,0">

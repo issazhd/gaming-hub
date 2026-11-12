@@ -50,6 +50,15 @@ public partial class MainWindow : Window
             placement.Attach(this, _hwnd);
         };
         placement.SuppressActivation = () => games.Running is not null;
+        placement.RestoreInputFocus += () =>
+        {
+            if (QuickMenuWindow.Current is not null || App.ShuttingDown) return;
+            var previous = FocusManager.GetFocusedElement(this) as UIElement;
+            BringToFront();
+            if (IsKeyboardFocusWithin) return;
+            if (previous is { IsVisible: true, IsEnabled: true } && previous.Focus()) return;
+            FocusFirst();
+        };
         games.Exited += _ => BringToFront();   // return to the launcher only after the game is gone
         Loaded += async (_, _) =>
         {
@@ -372,7 +381,7 @@ public partial class MainWindow : Window
             bool ours = fgPid == (uint)Environment.ProcessId;
             bool inGame = _secondTapClosedGameOverlay || QuickMenuWindow.Current?.OverGame == true || (!ours && GameWindows.FullscreenAppInFront());
             QuickMenuWindow.Current?.CloseMenu();
-            if (!inGame || _vm.ControllerSettings.PsButtonOverGames) _vm.ExtendToPreferredDisplay();
+            if (!inGame || _vm.ControllerSettings.PsButtonOverGames) _vm.ExtendToPreferredDisplay(inGame);
             else Serilog.Log.Information("PS triple press ignored: a game is running full screen (allow it in Settings › Controller)");
             return;
         }

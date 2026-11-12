@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Threading;
 using GamingHub.Core.Displays;
 using GamingHub.Core.Settings;
@@ -21,11 +21,17 @@ public sealed class LauncherPlacementService(DisplayWatcher watcher, SettingsSer
     DisplayInfo? _testOverride;
     bool? _prefWasAvailable;
     long _goPreferredUntil;
-    bool _extended;
+    bool _restoreFocus, _notifyExtended;
 
     /// <summary>The user asked to extend to the preferred display: move there once it becomes active (within 20 s).</summary>
-    /// <param name="extended">Gaming Hub extended the desktop for this (raises <see cref="ExtendedToPreferred"/> once it is active).</param>
-    public void GoToPreferredSoon(bool extended = false) { _goPreferredUntil = Environment.TickCount64 + 20_000; _extended = extended; }
+    public void GoToPreferredSoon(bool restoreFocus, bool notifyExtended = true)
+    {
+        _goPreferredUntil = Environment.TickCount64 + 20_000;
+        _restoreFocus = restoreFocus;
+        _notifyExtended = notifyExtended;
+    }
+    public bool IsHubActive => _window?.IsActive == true;
+    public event Action? RestoreInputFocus;
 
     /// <summary>The preferred display became active after Gaming Hub extended the desktop to it.</summary>
     public event Action<DisplayInfo>? ExtendedToPreferred;
@@ -98,16 +104,18 @@ public sealed class LauncherPlacementService(DisplayWatcher watcher, SettingsSer
         }
 
         // Right after the user asked to extend to the preferred display, go there even if auto-switch is off.
+        bool restoreFocus = false;
         if (_testOverride is null && Environment.TickCount64 < _goPreferredUntil && d.PreferredAvailable)
         {
             d = d with { Target = DisplayMatcher.Match(S.Preferred, snap.Active).Display, Reason = "extended to preferred display" };
             _goPreferredUntil = 0;
-            if (_extended && d.Target is { } ext) { _extended = false; ExtendedToPreferred?.Invoke(ext); }
+            restoreFocus = _restoreFocus;
+            if (_notifyExtended && d.Target is { } ext) ExtendedToPreferred?.Invoke(ext);
         }
         var target = _testOverride ?? d.Target;
         log.LogInformation("Launcher placement ({Reason}): {Target} because {Why}; preferred={Pref}",
             reason, target?.Identity.ToString() ?? "none", _testOverride is null ? d.Reason : "Test Display", d.PreferredMatch);
-        if (target is not null && _window.WindowState != WindowState.Minimized && _window.IsVisible) PlaceOn(target);
+        if (target is not null && _window.WindowState != WindowState.Minimized && _window.IsVisible) PlaceOn(target, restoreFocus);
 
         if (S.RememberLastDisplay && _testOverride is null && HostDisplay is not null && S.LastDisplay != HostDisplay.Identity)
         {
@@ -117,7 +125,7 @@ public sealed class LauncherPlacementService(DisplayWatcher watcher, SettingsSer
         StateChanged?.Invoke();
     }
 
-    void PlaceOn(DisplayInfo t)
+    void PlaceOn(DisplayInfo t, bool restoreFocus)
     {
         var bounds = S.Fullscreen ? t.Bounds : Centered(t.WorkArea);
         // Moving across monitors with different DPI triggers WM_DPICHANGED, whose suggested rect WPF applies;
@@ -134,11 +142,13 @@ public sealed class LauncherPlacementService(DisplayWatcher watcher, SettingsSer
         // WPF may re-layout after DPI change asynchronously; verify once more after it settles.
         _window!.Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () =>
         {
+            if (!_window.IsVisible || _window.WindowState == WindowState.Minimized || HostDisplay != t) return;
             if (!WindowPlacement.IsOn(_hwnd, bounds, exact: true))
             {
                 WindowPlacement.Move(_hwnd, bounds);
                 log.LogInformation("Post-layout correction: actual={Actual}", WindowPlacement.GetBounds(_hwnd));
             }
+            if (restoreFocus && !SuppressActivation() && VisibleHost?.Identity == t.Identity) RestoreInputFocus?.Invoke();
         });
     }
 
