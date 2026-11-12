@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Net.Http;
+using System.Reflection;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -26,7 +27,10 @@ public sealed partial class MainViewModel
             using var response = await UpdateClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
             using var release = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-            (UpdateStatus, UpdateInstaller) = ReadUpdate(release.RootElement, Version.Parse(AppVersion));
+            var stamp = typeof(MainViewModel).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+                .FirstOrDefault(a => a.Key == "ReleaseBuild")?.Value;
+            long.TryParse(stamp, out var installedBuild);
+            (UpdateStatus, UpdateInstaller) = ReadUpdate(release.RootElement, Version.Parse(AppVersion), installedBuild);
         }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or JsonException or FormatException or InvalidOperationException or KeyNotFoundException)
         {
@@ -35,17 +39,29 @@ public sealed partial class MainViewModel
         }
     }
 
-    internal static (string Status, Uri? Installer) ReadUpdate(JsonElement release, Version installed)
+    internal static (string Status, Uri? Installer) ReadUpdate(JsonElement release, Version installed, long installedBuild)
     {
         string tag = release.GetProperty("tag_name").GetString() ?? "";
         if (!Version.TryParse(tag.TrimStart('v'), out var latest)) throw new FormatException("Invalid release version");
-        if (installed >= latest) return ($"You’re up to date. The latest public version is {latest}.", null);
+        var current = $"You’re up to date. The latest public version is {latest}.";
+        if (installed > latest) return (current, null);
 
         string name = $"GamingHub-{latest}-Setup.exe";
         var url = new Uri($"https://github.com/issazhd/gaming-hub/releases/download/{tag}/{name}");
         foreach (var asset in release.GetProperty("assets").EnumerateArray())
-            if (asset.GetProperty("name").GetString() == name && asset.GetProperty("browser_download_url").GetString() == url.AbsoluteUri)
-                return ($"Gaming Hub {latest} is available. Download and run the installer to update.", url);
+        {
+            if (asset.GetProperty("name").GetString() != name || asset.GetProperty("browser_download_url").GetString() != url.AbsoluteUri)
+                continue;
+            if (latest > installed) return ($"Gaming Hub {latest} is available. Download and run the installer to update.", url);
+
+            var label = asset.TryGetProperty("label", out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+            if (label?.StartsWith("Build ", StringComparison.Ordinal) != true ||
+                !long.TryParse(label.AsSpan(6), out var publicBuild) || publicBuild <= 0)
+                return ($"The latest public version is {latest}. This installer has no build number to compare.", null);
+            return publicBuild > installedBuild
+                ? ($"A newer build of Gaming Hub {latest} is available. Download and run the installer to update.", url)
+                : (current, null);
+        }
         return ($"Gaming Hub {latest} is available. Its Windows installer isn’t ready yet.", null);
     }
 

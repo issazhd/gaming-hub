@@ -124,7 +124,7 @@ public partial class App : Application
         bool toTray = e.Args.Contains("--startup") && settings.StartMinimizedToTray && !settings.ConsoleMode;
         if (toTray) window.InitializeHidden(); else window.Show();
         var pad = sp.GetRequiredService<ControllerService>();
-        sp.GetRequiredService<TrayService>().Start(window, pad, sp.GetRequiredService<LibraryService>(), sp.GetRequiredService<MainViewModel>());
+        sp.GetRequiredService<TrayService>().Start(window, pad, sp.GetRequiredService<MainViewModel>());
         pad.Start();
 
         new Thread(() =>

@@ -7,6 +7,7 @@ param([switch]$SelfContained, [switch]$Installer)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
+$releaseBuild = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
 
 dotnet test tests/GamingHub.Tests -c Release
 if ($LASTEXITCODE) { throw "Tests failed" }
@@ -14,7 +15,7 @@ if ($LASTEXITCODE) { throw "Tests failed" }
 function Publish([string]$out, [bool]$sc) {
     if (Test-Path $out) { Remove-Item -Recurse -Force $out }
     dotnet publish src/GamingHub.App -c Release -r win-x64 --self-contained $(if ($sc) { 'true' } else { 'false' }) -o $out `
-        -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none
+        -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none "-p:ReleaseBuild=$releaseBuild"
     if ($LASTEXITCODE) { throw "Publish failed" }
 }
 
@@ -38,5 +39,6 @@ if ($Installer) {
     if (-not $iscc) { throw "Inno Setup 6 not found (winget install JRSoftware.InnoSetup)" }
     & $iscc /Q "/DAppVersion=$version" "/DSourceDir=$sc" (Join-Path $PSScriptRoot 'GamingHub.iss')
     if ($LASTEXITCODE) { throw "Installer build failed" }
+    [IO.File]::WriteAllText((Join-Path $root "dist\GamingHub-$version-Setup.label.txt"), "Build $releaseBuild")
     Write-Host "Installer: $(Join-Path $root "dist\GamingHub-$version-Setup.exe")"
 }

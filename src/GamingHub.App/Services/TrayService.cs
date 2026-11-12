@@ -9,13 +9,13 @@ public sealed class TrayService : IDisposable
     NotifyIcon? _icon;
     ToolStripMenuItem? _status;
 
-    public void Start(MainWindow w, ControllerService pad, LibraryService library, ViewModels.MainViewModel vm)
+    public void Start(MainWindow w, ControllerService pad, ViewModels.MainViewModel vm)
     {
         var menu = new ContextMenuStrip();
         _status = new ToolStripMenuItem(pad.Status) { Enabled = false };
         menu.Items.Add("Open Gaming Hub", null, (_, _) => w.BringToFront());
         menu.Items.Add("Open on preferred display", null, (_, _) => { w.BringToFront(); vm.RescanDisplaysCommand.Execute(null); });
-        menu.Items.Add("Scan for games", null, async (_, _) => vm.ShowToast(await library.ScanAsync()));
+        menu.Items.Add("Scan for games", null, async (_, _) => await vm.RescanLibrary());
         menu.Items.Add("Settings", null, (_, _) => { w.BringToFront(); vm.ShowSettingsCommand.Execute(null); });
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(_status);

@@ -954,7 +954,7 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             var summary = await _library.ScanAsync();
-            if (!quiet || !summary.StartsWith("Scan complete: 0 new, 0 updated, 0 no longer")) ShowToast(summary);
+            if (!quiet || summary.Changed) ShowToast(summary.Message);
         }
         finally { IsScanning = false; ReloadGames(); }
         await FillArtworkAsync();
