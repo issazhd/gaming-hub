@@ -16,7 +16,7 @@ To update, run the newer installer over your existing installation. Your library
 
 Each release includes a SHA-256 checksum. To verify the download in PowerShell, run `Get-FileHash .\GamingHub-1.0.0-Setup.exe -Algorithm SHA256` from the download folder and compare the result with SHA256SUMS.txt.
 
-Gaming Hub 1.0.0 starts the public version numbering. If you have 1.3.7, install 1.0.0 over it once. For subsequent releases, open **Settings → About → Check for updates**.
+To check for new releases, open **Settings → About → Check for updates**.
 
 ## Build a fork
 
