@@ -44,7 +44,7 @@ public sealed class ShortcutScanner(Func<IReadOnlyList<string>> folders) : IGame
     static string? ReadUrl(string file) =>
         File.ReadLines(file).FirstOrDefault(l => l.StartsWith("URL=", StringComparison.OrdinalIgnoreCase))?[4..].Trim();
 
-    static (string Target, string Args, string WorkDir)? ReadLink(string file)
+    public static (string Target, string Args, string WorkDir)? ReadLink(string file)
     {
         var link = (IShellLinkW)new ShellLink();
         try

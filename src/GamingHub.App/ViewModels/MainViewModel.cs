@@ -900,7 +900,7 @@ public sealed partial class MainViewModel : ObservableObject
         var h = _helper.Current;
         var dlg = new OpenFileDialog { Filter = $"{h.ExeName}|{h.ExeName}|Programs (*.exe)|*.exe", Title = $"Locate {h.ExeName}" };
         if (dlg.ShowDialog() != true) return;
-        _helper.SetPath(h, dlg.FileName);
+        if (!_helper.SetPath(h, dlg.FileName)) { ShowToast($"Select the executable for {h.Name}."); return; }
         _helperNoPrompt = null;   // a different exe no longer matches its task
         OnPropertyChanged(nameof(HelperStatus));
         OnPropertyChanged(nameof(HelperNoPrompt));

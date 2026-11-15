@@ -56,6 +56,7 @@ public sealed class ControllerSettings
     public string? Ds4WindowsPath { get; set; }
     /// <summary>ZerkSense5.exe location (blank = detect automatically).</summary>
     public string? ZerkSense5Path { get; set; }
+    public string? Ds4NexusPath { get; set; }
     /// <summary>Controller helper for flagged games: "ZerkSense5" or "DS4Windows" (blank = ZerkSense5 if installed).</summary>
     public string? Helper { get; set; }
     /// <summary>Triple-press PS: if the preferred display is connected but not part of the desktop, extend the desktop to it (Win+P › Extend). Off by default — it changes the Windows display layout.</summary>

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using GamingHub.Core.Games;
 using GamingHub.Core.Settings;
 using GamingHub.Infrastructure.Games;
+using GamingHub.Infrastructure.Discovery;
 using Microsoft.Extensions.Logging;
 
 namespace GamingHub.App.Services;
@@ -19,7 +20,9 @@ public sealed record HelperKind(string Name, string ProcessName, string StartArg
         "Enables haptics, adaptive triggers and the speaker on a Bluetooth DualSense, or emulates an Xbox 360 controller");
     public static readonly HelperKind Ds4Windows = new("DS4Windows", "DS4Windows", "-m", "-command Shutdown", 4,
         "Emulates an Xbox controller for games that only support Xbox controllers");
-    public static readonly HelperKind[] All = [ZerkSense5, Ds4Windows];
+    public static readonly HelperKind Nexus = new("DS4Windows Nexus", "DS4Windows", "", null, 4,
+        "Starts Nexus with your configured controller profile");
+    public static readonly HelperKind[] All = [ZerkSense5, Ds4Windows, Nexus];
 
     public override string ToString() => Name;   // shown by the Settings dropdown
 }
@@ -42,44 +45,89 @@ public sealed class ControllerHelperService(SettingsService settings, ILogger<Co
 
     public static HelperKind? ByName(string? name) => HelperKind.All.FirstOrDefault(h => h.Name == name);
 
-    public static bool IsRunning(HelperKind h) => Process.GetProcessesByName(h.ProcessName).Length > 0;
+    static bool Matches(HelperKind h, string? path)
+    {
+        if (!File.Exists(path)) return false;
+        if (h == HelperKind.ZerkSense5) return true;
+        try
+        {
+            var product = FileVersionInfo.GetVersionInfo(path).ProductName;
+            return string.Equals(product, h.Name, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Win32Exception) { return false; }
+    }
 
-    string? ConfiguredPath(HelperKind h) => h == HelperKind.ZerkSense5 ? S.ZerkSense5Path : S.Ds4WindowsPath;
+    static string? RunningPath(HelperKind h)
+    {
+        string? match = null;
+        foreach (var proc in Process.GetProcessesByName(h.ProcessName))
+            using (proc)
+            {
+                var path = GameWindows.ProcessPath(proc.Id);
+                if (Matches(h, path)) match = path;
+            }
+        return match;
+    }
+
+    static bool AnyProcessNamed(string name)
+    {
+        var processes = Process.GetProcessesByName(name);
+        foreach (var process in processes) process.Dispose();
+        return processes.Length != 0;
+    }
+
+    public static bool IsRunning(HelperKind h) => h == HelperKind.ZerkSense5
+        ? AnyProcessNamed(h.ProcessName) : RunningPath(h) is not null;
+
+    string? ConfiguredPath(HelperKind h) => h == HelperKind.Nexus ? S.Ds4NexusPath :
+        h == HelperKind.ZerkSense5 ? S.ZerkSense5Path : S.Ds4WindowsPath;
 
     /// <summary>Settings path, else a running copy, else common install/download folders.</summary>
     public string? FindExe(HelperKind h)
     {
-        if (ConfiguredPath(h) is { } p && File.Exists(p)) return p;
-        foreach (var proc in Process.GetProcessesByName(h.ProcessName))
-            try { if (proc.MainModule?.FileName is { } f) return f; } catch { /* elevated or access denied: keep looking */ }
+        if (ConfiguredPath(h) is { } p && Matches(h, p)) return p;
+        if (RunningPath(h) is { } running) return running;
         string Env(Environment.SpecialFolder f) => Environment.GetFolderPath(f);
         var home = Env(Environment.SpecialFolder.UserProfile);
         foreach (var root in new[] { Path.Combine(Env(Environment.SpecialFolder.LocalApplicationData), "Programs", h.Name),
                      Path.Combine(Env(Environment.SpecialFolder.ProgramFiles), h.Name),
                      Path.Combine(Env(Environment.SpecialFolder.LocalApplicationData), h.Name),
-                     Path.Combine(home, "Downloads"), Path.Combine(home, "Desktop"), Path.Combine(home, "Documents") })
+                     Env(Environment.SpecialFolder.DesktopDirectory), Path.Combine(home, "Downloads"), Path.Combine(home, "Documents") })
         {
             if (!Directory.Exists(root)) continue;
             try
             {
-                var hit = Directory.EnumerateFiles(root, h.ExeName, new EnumerationOptions { RecurseSubdirectories = true, MaxRecursionDepth = 3, IgnoreInaccessible = true }).FirstOrDefault();
+                var options = new EnumerationOptions { RecurseSubdirectories = true, MaxRecursionDepth = 3, IgnoreInaccessible = true };
+                var hit = Directory.EnumerateFiles(root, h.ExeName, options).FirstOrDefault(f => Matches(h, f));
                 if (hit is not null) return hit;
+                if (h.ProcessName == "DS4Windows" && root == Env(Environment.SpecialFolder.DesktopDirectory))
+                    foreach (var shortcut in Directory.EnumerateFiles(root, "*.lnk", options))
+                        if (ShortcutScanner.ReadLink(shortcut)?.Target is { } target &&
+                            Path.GetFileName(target).Equals(h.ExeName, StringComparison.OrdinalIgnoreCase) && Matches(h, target)) return target;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
         return null;
     }
 
-    public void SetPath(HelperKind h, string path)
+    public bool SetPath(HelperKind h, string path)
     {
-        if (h == HelperKind.ZerkSense5) S.ZerkSense5Path = path; else S.Ds4WindowsPath = path;
+        if (!Matches(h, path)) return false;
+        if (h == HelperKind.Nexus) S.Ds4NexusPath = path;
+        else if (h == HelperKind.ZerkSense5) S.ZerkSense5Path = path;
+        else S.Ds4WindowsPath = path;
         settings.Save();
+        return true;
     }
 
     /// <summary>Starts the helper if needed and waits for its virtual controller. Returns true when Gaming Hub started it.</summary>
     public async Task<bool> EnsureRunningAsync(HelperKind h)
     {
         if (IsRunning(h)) return false;
+        if (h.ProcessName == "DS4Windows" && AnyProcessNamed(h.ProcessName))
+        {
+            throw new InvalidOperationException($"Another DS4Windows instance is open. Exit it from the tray before starting {h.Name}.");
+        }
         var exe = FindExe(h) ?? throw new FileNotFoundException($"{h.Name} wasn't found. Set its location in Settings › Controller.");
         try
         {
@@ -96,6 +144,8 @@ public sealed class ControllerHelperService(SettingsService settings, ILogger<Co
         }
         log.LogInformation("Started controller helper {Helper} from {Exe}", h.Name, exe);
         await Task.Delay(TimeSpan.FromSeconds(h.StartDelayS));   // virtual controller must exist before the game probes for pads
+        if (h == HelperKind.Nexus && !IsRunning(h))
+            throw new InvalidOperationException("Nexus did not stay open. Open DS4Windows Nexus, finish its setup, then try again.");
         return true;
     }
 
