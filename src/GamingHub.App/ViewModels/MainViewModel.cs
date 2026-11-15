@@ -82,6 +82,7 @@ public sealed partial class MainViewModel : ObservableObject
         DisplayWatcher watcher, LibraryService library, SystemService system, ArtworkService artwork, ControllerHelperService helper)
     {
         (_repo, _settings, _placement, _launcher, _watcher, _library, _system, _artwork, _helper) = (repo, settings, placement, launcher, watcher, library, system, artwork, helper);
+        helper.MigrateLegacyAssignments(repo);
         _placement.StateChanged += RefreshDisplays;
         _placement.Notify += ShowToast;
         _placement.ExtendedToPreferred += d => System.Windows.Application.Current.Dispatcher.BeginInvoke(async () =>
@@ -643,7 +644,7 @@ public sealed partial class MainViewModel : ObservableObject
         EditIsManual = g.Source == "manual";
         NewName = g.Name; NewExe = g.ExecutablePath; NewArgs = g.Arguments; NewWorkDir = g.WorkingDirectory ?? "";
         NewCategories = g.Categories; NewCover = g.CoverPath ?? ""; NewBackground = g.BackgroundPath ?? "";
-        NewAutoPlace = g.AutoPlace; NewRunElevated = g.RunElevated; NewAllowPause = g.AllowPause; NewHelperChoice = g.UseControllerHelper ? (g.HelperName ?? _helper.Current.Name) : "Off"; NewShowOnHome = g.ShowOnHome; NewCustomExe = g.CustomExe ?? ""; RemoveArmed = false; EditingExisting = true;
+        NewAutoPlace = g.AutoPlace; NewRunElevated = g.RunElevated; NewAllowPause = g.AllowPause; NewHelperChoice = g.UseControllerHelper ? (ControllerHelperService.ByName(g.HelperName)?.Name ?? "Off") : "Off"; NewShowOnHome = g.ShowOnHome; NewCustomExe = g.CustomExe ?? ""; RemoveArmed = false; EditingExisting = true;
         DefaultLaunchText = g.LaunchUri is { } u ? $"Default: through {GameTile.SourceName(g.Source)} ({u.Split('?')[0]})" : $"Default: {g.ExecutablePath}"; NewFallback = g.TargetFallback;
         FillTargetOptions(g);
         IsEditing = true;
@@ -689,7 +690,7 @@ public sealed partial class MainViewModel : ObservableObject
         g.Categories = NewCategories;
         g.CoverPath = string.IsNullOrWhiteSpace(NewCover) ? null : NewCover;
         g.BackgroundPath = string.IsNullOrWhiteSpace(NewBackground) ? null : NewBackground;
-        g.AutoPlace = NewAutoPlace; g.AllowPause = NewAllowPause; g.UseControllerHelper = NewHelperChoice != "Off"; if (g.UseControllerHelper) g.HelperName = NewHelperChoice; g.ShowOnHome = NewShowOnHome;
+        g.AutoPlace = NewAutoPlace; g.AllowPause = NewAllowPause; g.UseControllerHelper = NewHelperChoice != "Off"; g.HelperName = g.UseControllerHelper ? NewHelperChoice : null; g.ShowOnHome = NewShowOnHome;
         if (!EditIsManual) g.CustomExe = string.IsNullOrWhiteSpace(NewCustomExe) ? null : NewCustomExe.Trim().Trim('"');
         g.TargetFallback = NewFallback;
         g.TargetMode = NewTarget?.Mode ?? GameTargetMode.FollowLauncher;
@@ -813,26 +814,27 @@ public sealed partial class MainViewModel : ObservableObject
     }
     // ---------------- Controller helper (ZerkSense5 / DS4Windows) ----------------
     public HelperKind[] HelperKinds => HelperKind.All;
-    public HelperKind Helper
+    HelperKind _setupHelper = HelperKind.Ds4Windows;
+    public HelperKind SetupHelper
     {
-        get => _helper.Current;
-        set { ControllerSettings.Helper = value.Name; SaveSettings(); _helperNoPrompt = null; OnPropertyChanged(); OnPropertyChanged(nameof(HelperStatus)); OnPropertyChanged(nameof(HelperNoPrompt)); OnPropertyChanged(nameof(HelperNoPromptLabel)); }
+        get => _setupHelper;
+        set { if (value is null || value == _setupHelper) return; _setupHelper = value; _helperNoPrompt = null; OnPropertyChanged(); OnPropertyChanged(nameof(HelperStatus)); OnPropertyChanged(nameof(HelperNoPrompt)); OnPropertyChanged(nameof(HelperNoPromptLabel)); }
     }
 
     bool? _helperNoPrompt;   // cached: checking asks Task Scheduler
-    /// <summary>Start the default helper through its admin task, so its UAC prompt doesn't appear (set up once with approval).</summary>
+    /// <summary>Start the selected helper through its admin task, so its UAC prompt doesn't appear (set up once with approval).</summary>
     public bool HelperNoPrompt
     {
-        get => _helperNoPrompt ??= _helper.NoPromptReady(_helper.Current);
+        get => _helperNoPrompt ??= _helper.NoPromptReady(SetupHelper);
         set
         {
             if (value == HelperNoPrompt) return;
             ShowToast("Approve the Windows prompt with the mouse or keyboard (Alt+Y) — it's needed only once");
-            var err = _helper.SetNoPrompt(_helper.Current, value);
-            _helperNoPrompt = _helper.NoPromptReady(_helper.Current);
+            var err = _helper.SetNoPrompt(SetupHelper, value);
+            _helperNoPrompt = _helper.NoPromptReady(SetupHelper);
             OnPropertyChanged();
-            ShowToast(err is not null ? $"{_helper.Current.Name}: {err}"
-                : value ? $"{_helper.Current.Name} now starts without the administrator prompt" : $"{_helper.Current.Name} starts normally again");
+            ShowToast(err is not null ? $"{SetupHelper.Name}: {err}"
+                : value ? $"{SetupHelper.Name} now starts without the administrator prompt" : $"{SetupHelper.Name} starts normally again");
         }
     }
     public LightBarColor[] LightBarColors { get; } = [LightBarColor.Original, .. Enum.GetValues<LightBarColor>().Where(color => color != LightBarColor.Original)];
@@ -874,13 +876,13 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     void GetFakerInput() => Process.Start(new ProcessStartInfo("https://github.com/Ryochan7/FakerInput/releases/latest") { UseShellExecute = true });
 
-    public string HelperNoPromptLabel =>$"Start {_helper.Current.Name} without the administrator prompt";
+    public string HelperNoPromptLabel =>$"Start {SetupHelper.Name} without the administrator prompt";
 
-    public string HelperStatus => _helper.FindExe(_helper.Current) is { } p
-        ? $"{_helper.Current.Purpose}. {(ControllerHelperService.IsRunning(_helper.Current) ? "Running" : "Installed")} at {p}. {HelperAfterGame}"
-        : $"{_helper.Current.Name} isn't installed. Install it, or use Locate to select it.";
+    public string HelperStatus => _helper.FindExe(SetupHelper) is { } p
+        ? $"{SetupHelper.Purpose}. {(ControllerHelperService.IsRunning(SetupHelper) ? "Running" : "Installed")} at {p}. {HelperAfterGame}"
+        : $"{SetupHelper.Name} isn't installed. Install it, or use Locate to select it.";
 
-    string HelperAfterGame => _helper.Current.ShutdownArgs is null ? "It keeps running in the notification area after the game." : "It closes after the game.";
+    string HelperAfterGame => SetupHelper.ShutdownArgs is null ? "It keeps running in the notification area after the game." : "It closes after the game.";
 
     /// <summary>Per-game choices in Game settings.</summary>
     public string[] HelperChoices { get; } = ["Off", .. HelperKind.All.Select(h => h.Name)];
@@ -897,7 +899,7 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     void BrowseHelper()
     {
-        var h = _helper.Current;
+        var h = SetupHelper;
         var dlg = new OpenFileDialog { Filter = $"{h.ExeName}|{h.ExeName}|Programs (*.exe)|*.exe", Title = $"Locate {h.ExeName}" };
         if (dlg.ShowDialog() != true) return;
         if (!_helper.SetPath(h, dlg.FileName)) { ShowToast($"Select the executable for {h.Name}."); return; }

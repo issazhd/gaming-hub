@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using GamingHub.Core.Displays;
 using GamingHub.Core.Games;
 using GamingHub.Infrastructure.Displays;
@@ -43,7 +43,7 @@ public sealed class GameLaunchService(IGameRepository repo, DisplayWatcher watch
         Running = g;   // blocks a second Play while the controller helper starts
         try
         {
-            _helperKind = helper.For(g);
+            _helperKind = ControllerHelperService.ByName(g.HelperName) ?? throw new InvalidOperationException("Choose a controller helper in Game settings.");
             Notify?.Invoke($"Starting {_helperKind.Name}…");
             _startedHelper = await helper.EnsureRunningAsync(_helperKind);
         }

@@ -18,7 +18,7 @@ public sealed class Game
     public bool Hidden { get; set; }
     /// <summary>Start the controller helper (ZerkSense5 or DS4Windows) before the game. Stored in the "ds4windows" column.</summary>
     public bool UseControllerHelper { get; set; }
-    /// <summary>Which helper this game uses ("ZerkSense5", "DS4Windows"); null = the one chosen in Settings.</summary>
+    /// <summary>The controller helper selected for this game. Older enabled entries without a name are migrated at startup.</summary>
     public string? HelperName { get; set; }
     /// <summary>Listed in the Home row — the user picks these (Library always lists every game).</summary>
     public bool ShowOnHome { get; set; }

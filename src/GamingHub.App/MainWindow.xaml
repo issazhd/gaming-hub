@@ -872,11 +872,11 @@
                                 </DockPanel>
                                 <DockPanel Style="{StaticResource ValueRow}">
                                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                                        <ComboBox ItemsSource="{Binding HelperKinds}" SelectedItem="{Binding Helper}" MinWidth="200" Margin="0,0,10,0" />
+                                        <ComboBox ItemsSource="{Binding HelperKinds}" SelectedItem="{Binding SetupHelper}" MinWidth="200" Margin="0,0,10,0" />
                                         <Button Content="Locate…" Command="{Binding BrowseHelperCommand}" />
                                     </StackPanel>
                                     <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="Default controller helper" FontSize="19" />
+                                        <TextBlock Text="Controller helper setup" FontSize="19" />
                                         <TextBlock Text="{Binding HelperStatus}" Style="{StaticResource RowDesc}" />
                                     </StackPanel>
                                 </DockPanel>
@@ -884,7 +884,7 @@
                             </StackPanel>
                         </Border>
                         <TextBlock Style="{StaticResource Note}"
-                                   Text="Choose a controller helper for each game in Game settings. Games set up earlier use the default helper. ZerkSense5 requires the usbip-win2 and HidHide drivers, which it can install for you, and asks for administrator permission when it starts, unless you turn on the option above. When Steam, DSX or DS4Windows also send keyboard input, Gaming Hub follows one controller at a time to prevent duplicate input." />
+                                   Text="Choose which helper starts with a game in Library → Game settings. Use this panel to locate each installed helper and configure its administrator prompt. ZerkSense5 requires the usbip-win2 and HidHide drivers, which it can install for you, and asks for administrator permission when it starts, unless you turn on the option above. When Steam, DSX or DS4Windows also send keyboard input, Gaming Hub follows one controller at a time to prevent duplicate input." />
                     </StackPanel>
 
                     <!-- Home -->

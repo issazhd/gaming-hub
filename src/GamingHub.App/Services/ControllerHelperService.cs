@@ -36,12 +36,16 @@ public sealed class ControllerHelperService(SettingsService settings, ILogger<Co
 {
     ControllerSettings S => settings.Current.Controller;
 
-    /// <summary>Chosen helper; when not chosen yet: ZerkSense5 if it is installed, else DS4Windows.</summary>
-    public HelperKind Current =>
-        HelperKind.All.FirstOrDefault(h => h.Name == S.Helper) ?? (FindExe(HelperKind.ZerkSense5) is not null ? HelperKind.ZerkSense5 : HelperKind.Ds4Windows);
-
-    /// <summary>The helper a game uses: its own choice, else the one chosen in Settings.</summary>
-    public HelperKind For(GamingHub.Core.Games.Game g) => ByName(g.HelperName) ?? Current;
+    public void MigrateLegacyAssignments(IGameRepository games)
+    {
+        HelperKind? legacy = null;
+        foreach (var game in games.GetAll().Where(g => g.UseControllerHelper && string.IsNullOrWhiteSpace(g.HelperName)))
+        {
+            legacy ??= ByName(S.Helper) ?? (FindExe(HelperKind.ZerkSense5) is null ? HelperKind.Ds4Windows : HelperKind.ZerkSense5);
+            game.HelperName = legacy.Name;
+            games.Save(game);
+        }
+    }
 
     public static HelperKind? ByName(string? name) => HelperKind.All.FirstOrDefault(h => h.Name == name);
 
