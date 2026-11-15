@@ -96,7 +96,7 @@ public partial class MainWindow : Window
         });
         vm.ControllerStatus = pad.Status;
         vm.Pads = pad.Pads;
-        Activated += (_, _) => pad.HubFocused = true;     // light bars / takeover feedback only while the hub is in front
+        Activated += (_, _) => { pad.HubFocused = true; vm.RefreshPlayHistory(); };
         Deactivated += (_, _) => { pad.HubFocused = false; Topmost = false; };
         MouseMove += (_, _) => { if (Mouse.OverrideCursor is not null) Mouse.OverrideCursor = null; };
         // Button hints follow the input in use. Mouse moves count only when no controller pointer moved it (touchpad / stick).

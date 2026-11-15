@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -29,26 +30,38 @@ public sealed record DisplayItem(DisplayInfo Info, bool IsPreferred, bool IsFall
 /// <summary>A Settings page in the category rail (Segoe Fluent Icons glyph).</summary>
 public sealed record SettingsCategory(string Name, string Glyph);
 
-public sealed record GameTile(Game G)
+public sealed record GameTile(Game G) : INotifyPropertyChanged
 {
+    public bool Equals(GameTile? other) => other is not null && G == other.G;
+    public override int GetHashCode() => G.GetHashCode();
+    public event PropertyChangedEventHandler? PropertyChanged;
+    long _elapsed;
+    public void SetElapsed(long seconds)
+    {
+        if (_elapsed == seconds) return;
+        _elapsed = seconds;
+        PropertyChanged?.Invoke(this, new(nameof(PlaytimeText)));
+        PropertyChanged?.Invoke(this, new(nameof(LastPlayedText)));
+        PropertyChanged?.Invoke(this, new(nameof(Subtitle)));
+    }
     public string Name => G.Name;
     public string? Cover => G.CoverPath;
     public string? Hero => G.BackgroundPath ?? G.CoverPath;
     public string Initial => G.Name.Length > 0 ? G.Name[..1] : "?";
-    public string LastPlayedText => G.LastPlayedUtc is { } lp ? lp.ToLocalTime().ToString("d MMM yyyy") : "Not yet";
+    public string LastPlayedText => _elapsed > 0 ? "Playing now" : G.LastPlayedUtc is { } lp ? lp.ToLocalTime().ToString("d MMM yyyy") : "Not yet";
     public string SourceText => SourceName(G.Source);
 
     /// <summary>Time played through Gaming Hub (sessions it launched and saw running).</summary>
-    public string PlaytimeText => G.PlaytimeSeconds switch
+    public string PlaytimeText => (G.PlaytimeSeconds + _elapsed) switch
     {
         0 => "Not played yet",
-        < 3600 => $"{Math.Max(1, G.PlaytimeSeconds / 60)} min played",
-        _ => $"{G.PlaytimeSeconds / 3600.0:0.#} h played",
+        var s when s < 3600 => $"{Math.Max(1, s / 60)} min played",
+        var s => $"{s / 3600.0:0.#} h played",
     };
     public string Subtitle => string.Join("  ·  ", new[]
     {
         SourceName(G.Source),
-        G.PlaytimeSeconds > 0 ? PlaytimeText : null,
+        G.PlaytimeSeconds + _elapsed > 0 ? PlaytimeText : null,
         G.LastPlayedUtc is { } lp ? $"last played {lp.ToLocalTime():d}" : null,
         G.Favorite ? "★ Favorite" : null,
     }.Where(s => s is not null));
@@ -97,10 +110,10 @@ public sealed partial class MainViewModel : ObservableObject
             _watcher.Schedule("main display changed");
         });
         _launcher.Notify += ShowToast;
-        _launcher.SessionChanged += () => { OnPropertyChanged(nameof(RunningName)); OnPropertyChanged(nameof(IsGameRunning)); if (!IsGameRunning) Launching = null; };
+        _launcher.SessionChanged += () => { OnPropertyChanged(nameof(RunningName)); OnPropertyChanged(nameof(IsGameRunning)); if (!IsGameRunning) Launching = null; UpdateLivePlaytime(); };
         _launcher.LaunchSettled += () => Launching = null;
         _launcher.Exited += _ => ReloadGames();
-        _clock.Tick += (_, _) => OnPropertyChanged(nameof(Clock));
+        _clock.Tick += (_, _) => { OnPropertyChanged(nameof(Clock)); UpdateLivePlaytime(); };
         _clock.Start();
         _testTimer.Tick += (_, _) => { if (--TestCountdown <= 0) EndTest(false); };
         _toastTimer.Tick += (_, _) => { _toastTimer.Stop(); Toast = null; };
@@ -251,10 +264,27 @@ public sealed partial class MainViewModel : ObservableObject
         .OrderByDescending(g => g.LastPlayedUtc).ThenBy(g => g.Id)
         .Take(4).Select(g => new GameTile(g));
 
-    void ReloadGames()
+    void UpdateLivePlaytime()
+    {
+        if (_launcher.Running is not { } running || _launcher.DetectedSessionStartUtc is not { } start) return;
+        long elapsed = Math.Max(1, (long)(DateTime.UtcNow - start).TotalSeconds);
+        foreach (var tile in HomeGames.Concat(LibraryGames))
+            if (tile.G.Id == running.Id) tile.SetElapsed(elapsed);
+    }
+
+    public void RefreshPlayHistory()
+    {
+        var visible = _repo.GetAll().Where(g => g.Installed && !g.Hidden).ToList();
+        if (!visible.Select(g => (g.Id, g.PlaytimeSeconds, g.LastPlayedUtc))
+            .SequenceEqual(_all.Select(g => (g.Id, g.PlaytimeSeconds, g.LastPlayedUtc)))) ReloadGames(visible);
+        else UpdateLivePlaytime();
+    }
+
+    void ReloadGames(List<Game>? visible = null)
     {
         var sel = SelectedGame?.G.Id;
-        _all = _repo.GetAll().Where(g => g.Installed && !g.Hidden).ToList();
+        _all = visible ?? _repo.GetAll().Where(g => g.Installed && !g.Hidden).ToList();
+        OnPropertyChanged(nameof(RecentGames));
 
         HomeGames.Clear();
         foreach (var g in HomeOrdered(_all.Where(g => g.ShowOnHome)).Take(HomeLimit))
@@ -288,6 +318,7 @@ public sealed partial class MainViewModel : ObservableObject
         };
         LibraryGames.Clear();
         foreach (var g in q) LibraryGames.Add(new GameTile(g));
+        UpdateLivePlaytime();
     }
 
     public void RefreshDisplays()
@@ -415,6 +446,7 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Home and Library share one selection; coming back to Home re-selects a Home game.</summary>
     partial void OnCurrentPageChanged(Page value)
     {
+        if (value is Page.Home or Page.Library) RefreshPlayHistory();
         if (value == Page.Home && !HomeHasSelection && HomeGames.Count > 0) SelectedGame = HomeGames[0];
     }
 

@@ -20,6 +20,7 @@ public sealed class GameLaunchService(IGameRepository repo, DisplayWatcher watch
     const int FindWindowTimeoutS = 120, MaxPlacements = 3;
 
     public Game? Running { get; private set; }
+    public DateTime? DetectedSessionStartUtc { get; private set; }
     IntPtr _window;
     public event Action<Game>? Exited;          // UI thread
     public event Action<string>? Notify;        // UI thread
@@ -110,7 +111,11 @@ public sealed class GameLaunchService(IGameRepository repo, DisplayWatcher watch
             {
                 await Task.Delay(_window == IntPtr.Zero ? 1000 : 2000);
                 pids = Pids(dir, proc);
-                if (pids.Count > 0) seen = true;
+                if (pids.Count > 0)
+                {
+                    if (!seen) Ui(() => { DetectedSessionStartUtc = started; SessionChanged?.Invoke(); });
+                    seen = true;
+                }
                 else if (seen || (proc is not null && sw.Elapsed.TotalSeconds > 45)) break;   // exited; platform launches get the full timeout
                 if (_window != IntPtr.Zero && sw.Elapsed.TotalSeconds > 30) break;   // window settled; switch to cheap exit polling
                 var w = GameWindows.FindMainWindow(pids);
@@ -164,6 +169,7 @@ public sealed class GameLaunchService(IGameRepository repo, DisplayWatcher watch
         Ui(() =>
         {
             Running = null;
+            DetectedSessionStartUtc = null;
             _window = IntPtr.Zero;
             SessionChanged?.Invoke();
             Exited?.Invoke(g);
