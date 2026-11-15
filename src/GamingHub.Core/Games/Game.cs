@@ -51,7 +51,7 @@ public interface IGameRepository
     IReadOnlyList<Game> GetAll();
     Game Save(Game game);
     void Delete(long id);
-    void AddPlaytime(long id, TimeSpan played, DateTime endedUtc);
+    void AddPlaytime(long id, TimeSpan played, DateTime endedUtc, DisplayIdentity? verifiedDisplay = null);
 }
 
 public sealed record LaunchCommand(string FileName, string Arguments, string WorkingDirectory);

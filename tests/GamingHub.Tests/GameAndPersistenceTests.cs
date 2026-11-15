@@ -85,10 +85,14 @@ public sealed class PersistenceTests : IDisposable
         var store = new SqliteStore(_db);
         var g = store.Save(new Game { Name = "Test", ExecutablePath = "C:\\t.exe", TargetMode = GameTargetMode.SpecificDisplay, TargetDisplay = Aoc.Identity });
         Assert.NotEqual(0, g.Id);
-        store.AddPlaytime(g.Id, TimeSpan.FromMinutes(2), DateTime.UtcNow);
+        var ended = DateTime.UtcNow;
+        store.AddPlaytime(g.Id, TimeSpan.FromMinutes(1), ended.AddMinutes(-2), Tv.Identity);
+        store.AddPlaytime(g.Id, TimeSpan.FromMinutes(1), ended);
+        Assert.Equal(Tv.Identity, Assert.Single(store.GetAll()).LastUsedDisplay);
+        store.Save(g); // An edit or artwork refresh can still hold the pre-session record.
         var back = Assert.Single(new SqliteStore(_db).GetAll());
         Assert.Equal((120L, Aoc.Identity), (back.PlaytimeSeconds, back.TargetDisplay));
-        Assert.NotNull(back.LastPlayedUtc);
+        Assert.Equal(ended, back.LastPlayedUtc);
         store.Delete(g.Id);
         Assert.Empty(store.GetAll());
     }

@@ -113,7 +113,7 @@ public sealed class SqliteStore : ISettingsStore, IGameRepository
             using var up = Cmd(c, """
                 UPDATE games SET name=$name,source=$src,exe=$exe,args=$args,workdir=$wd,cover=$cover,background=$bg,
                   categories=$cat,favorite=$fav,target_mode=$tm,target_display=$td,last_display=$ld,
-                  target_fallback=$tf,last_played_utc=$lp,playtime_s=$pt,external_id=$ext,launch_uri=$uri,
+                  target_fallback=$tf,external_id=$ext,launch_uri=$uri,
                   install_dir=$idir,installed=$inst,auto_place=$ap,hidden=$hid,ds4windows=$ds4,show_home=$home,custom_exe=$cexe,home_order=$hord,helper=$helper,run_elevated=$elev,allow_pause=$pause WHERE id=$id
                 """, p);
             up.ExecuteNonQuery();
@@ -138,7 +138,7 @@ public sealed class SqliteStore : ISettingsStore, IGameRepository
 
     public void Delete(long id) => Exec("DELETE FROM games WHERE id=$id", ("$id", id));
 
-    public void AddPlaytime(long id, TimeSpan played, DateTime endedUtc) =>
-        Exec("UPDATE games SET playtime_s=playtime_s+$s, last_played_utc=$t WHERE id=$id",
-            ("$s", (long)played.TotalSeconds), ("$t", endedUtc.ToString("O")), ("$id", id));
+    public void AddPlaytime(long id, TimeSpan played, DateTime endedUtc, DisplayIdentity? verifiedDisplay = null) =>
+        Exec("UPDATE games SET playtime_s=playtime_s+$s, last_played_utc=$t, last_display=COALESCE($display,last_display) WHERE id=$id",
+            ("$s", (long)played.TotalSeconds), ("$t", endedUtc.ToString("O")), ("$display", Ser(verifiedDisplay)), ("$id", id));
 }

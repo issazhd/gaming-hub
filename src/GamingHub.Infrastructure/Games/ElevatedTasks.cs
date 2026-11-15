@@ -39,6 +39,29 @@ public static class ElevatedTasks
         return code == 0 ? null : output.Trim();
     }
 
+    // Use this specific task instance's engine PID. A later manual launch must never become ours.
+    public static async Task<Process?> StartTrackedAsync(string name, string executable)
+    {
+        dynamic scheduler = Activator.CreateInstance(Type.GetTypeFromProgID("Schedule.Service", true)!)!;
+        scheduler.Connect();
+        dynamic task = scheduler.GetFolder(@"\").GetTask(name);
+        dynamic instance = task.Run(null);
+        for (int i = 0; i < 15; i++)
+        {
+            try
+            {
+                instance.Refresh();
+                int pid = (int)instance.EnginePID;
+                if (pid > 0 && string.Equals(GameWindows.ProcessPath(pid), executable, StringComparison.OrdinalIgnoreCase))
+                    return Process.GetProcessById(pid);
+            }
+            catch (System.Runtime.InteropServices.COMException) { break; }
+            catch (ArgumentException) { break; }
+            await Task.Delay(100);
+        }
+        return null;
+    }
+
     static (int, string) Run(string args)
     {
         var psi = new ProcessStartInfo("schtasks.exe", args)

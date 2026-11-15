@@ -10,17 +10,17 @@ namespace GamingHub.App.Services;
 
 /// <summary>A controller helper Gaming Hub can start for games that need it (user-installed; Gaming Hub installs no drivers).</summary>
 /// <param name="StartArgs">Arguments used when Gaming Hub starts it.</param>
-/// <param name="ShutdownArgs">Arguments that make a running copy exit cleanly, or null when it should be left running.</param>
+/// <param name="CloseAfterGame">Whether to close an instance started by the Hub after the game exits.</param>
 /// <param name="StartDelayS">Time for its virtual controller to appear before the game starts.</param>
-public sealed record HelperKind(string Name, string ProcessName, string StartArgs, string? ShutdownArgs, int StartDelayS, string Purpose)
+public sealed record HelperKind(string Name, string ProcessName, string StartArgs, bool CloseAfterGame, int StartDelayS, string Purpose)
 {
     public string ExeName => ProcessName + ".exe";
 
-    public static readonly HelperKind ZerkSense5 = new("ZerkSense5", "ZerkSense5", "", null, 6,
+    public static readonly HelperKind ZerkSense5 = new("ZerkSense5", "ZerkSense5", "", false, 6,
         "Enables haptics, adaptive triggers and the speaker on a Bluetooth DualSense, or emulates an Xbox 360 controller");
-    public static readonly HelperKind Ds4Windows = new("DS4Windows", "DS4Windows", "-m", "-command Shutdown", 4,
+    public static readonly HelperKind Ds4Windows = new("DS4Windows", "DS4Windows", "-m", true, 4,
         "Emulates an Xbox controller for games that only support Xbox controllers");
-    public static readonly HelperKind Nexus = new("DS4Windows Nexus", "DS4Windows", "", null, 4,
+    public static readonly HelperKind Nexus = new("DS4Windows Nexus", "DS4Windows", "", true, 4,
         "Starts Nexus with your configured controller profile");
     public static readonly HelperKind[] All = [ZerkSense5, Ds4Windows, Nexus];
 
@@ -124,23 +124,28 @@ public sealed class ControllerHelperService(SettingsService settings, ILogger<Co
         return true;
     }
 
-    /// <summary>Starts the helper if needed and waits for its virtual controller. Returns true when Gaming Hub started it.</summary>
-    public async Task<bool> EnsureRunningAsync(HelperKind h)
+    /// <summary>Starts the helper if needed and waits for its virtual controller. Returns the process this launch owns, if its shutdown can be managed.</summary>
+    public async Task<Process?> EnsureRunningAsync(HelperKind h)
     {
-        if (IsRunning(h)) return false;
+        if (IsRunning(h)) return null;
         if (h.ProcessName == "DS4Windows" && AnyProcessNamed(h.ProcessName))
         {
             throw new InvalidOperationException($"Another DS4Windows instance is open. Exit it from the tray before starting {h.Name}.");
         }
         var exe = FindExe(h) ?? throw new FileNotFoundException($"{h.Name} wasn't found. Set its location in Settings › Controller.");
+        Process? started = null;
         try
         {
             if (NoPromptReady(h, exe))
             {
-                if (ElevatedTasks.Start(TaskName(h)) is { } err) throw new InvalidOperationException($"Couldn't start {h.Name}: {err}");
+                if (!h.CloseAfterGame)
+                {
+                    if (ElevatedTasks.Start(TaskName(h)) is { } err) throw new InvalidOperationException($"Couldn't start {h.Name}: {err}");
+                }
+                else started = await ElevatedTasks.StartTrackedAsync(TaskName(h), exe);
                 log.LogInformation("Starting {Helper} through its admin task (no prompt)", h.Name);
             }
-            else Process.Start(new ProcessStartInfo(exe, h.StartArgs) { UseShellExecute = true, WorkingDirectory = Path.GetDirectoryName(exe)! });
+            else started = Process.Start(new ProcessStartInfo(exe, h.StartArgs) { UseShellExecute = true, WorkingDirectory = Path.GetDirectoryName(exe)! });
         }
         catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)   // the Windows admin prompt was declined
         {
@@ -149,8 +154,14 @@ public sealed class ControllerHelperService(SettingsService settings, ILogger<Co
         log.LogInformation("Started controller helper {Helper} from {Exe}", h.Name, exe);
         await Task.Delay(TimeSpan.FromSeconds(h.StartDelayS));   // virtual controller must exist before the game probes for pads
         if (h == HelperKind.Nexus && !IsRunning(h))
+        {
+            started?.Dispose();
             throw new InvalidOperationException("Nexus did not stay open. Open DS4Windows Nexus, finish its setup, then try again.");
-        return true;
+        }
+        if (started is null) return null;
+        if (h.CloseAfterGame && !started.HasExited) return started;
+        started.Dispose();
+        return null;
     }
 
     // ---- Start without the UAC prompt (D-015): a Task Scheduler task with admin rights, set up once with approval ----
@@ -174,14 +185,22 @@ public sealed class ControllerHelperService(SettingsService settings, ILogger<Co
     }
 
     /// <summary>Closes the helper after the game — only helpers that support a clean exit (DS4Windows).</summary>
-    public void StopIfStartedByUs(HelperKind h, bool startedByUs)
+    public void StopIfStartedByUs(Process? started)
     {
-        if (!startedByUs || h.ShutdownArgs is null || !IsRunning(h) || FindExe(h) is not { } exe) return;
+        if (started is null) return;
         try
         {
-            Process.Start(new ProcessStartInfo(exe, h.ShutdownArgs) { UseShellExecute = true, WorkingDirectory = Path.GetDirectoryName(exe)! });
-            log.LogInformation("Asked {Helper} to shut down", h.Name);
+            if (started.HasExited || GameWindows.ProcessPath(started.Id) is not { } exe) return;
+            var h = HelperKind.All.FirstOrDefault(kind => kind.CloseAfterGame && Matches(kind, exe));
+            if (h is null || started.HasExited) return;
+            if (!Ds4Shutdown.Request(started))
+            {
+                log.LogWarning("Could not deliver shutdown to {Helper} (PID {Pid})", h.Name, started.Id);
+                return;
+            }
+            log.LogInformation("Asked {Helper} (PID {Pid}) to shut down", h.Name, started.Id);
         }
-        catch (Exception ex) { log.LogWarning(ex, "Couldn't close {Helper}", h.Name); }
+        catch (Exception ex) { log.LogWarning(ex, "Couldn't close the session's controller helper"); }
+        finally { started.Dispose(); }
     }
 }

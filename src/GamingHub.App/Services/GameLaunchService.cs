@@ -17,8 +17,6 @@ public sealed record LaunchOutcome(bool Started, bool NeedsDisplayChoice, string
 public sealed class GameLaunchService(IGameRepository repo, DisplayWatcher watcher, LauncherPlacementService placement,
     ControllerHelperService helper, ILogger<GameLaunchService> log)
 {
-    bool _startedHelper;
-    HelperKind? _helperKind;
     const int FindWindowTimeoutS = 120, MaxPlacements = 3;
 
     public Game? Running { get; private set; }
@@ -41,20 +39,21 @@ public sealed class GameLaunchService(IGameRepository repo, DisplayWatcher watch
         }
         if (!g.UseControllerHelper) return Launch(g, chosen);
         Running = g;   // blocks a second Play while the controller helper starts
+        Process? ownedHelper;
         try
         {
-            _helperKind = ControllerHelperService.ByName(g.HelperName) ?? throw new InvalidOperationException("Choose a controller helper in Game settings.");
-            Notify?.Invoke($"Starting {_helperKind.Name}…");
-            _startedHelper = await helper.EnsureRunningAsync(_helperKind);
+            var kind = ControllerHelperService.ByName(g.HelperName) ?? throw new InvalidOperationException("Choose a controller helper in Game settings.");
+            Notify?.Invoke($"Starting {kind.Name}…");
+            ownedHelper = await helper.EnsureRunningAsync(kind);
         }
         catch (Exception ex) { Running = null; return new(false, false, ex.Message); }
         finally { if (Running == g) Running = null; }
-        var r = Launch(g, chosen);
-        if (!r.Started) { helper.StopIfStartedByUs(_helperKind!, _startedHelper); _startedHelper = false; }
+        var r = Launch(g, chosen, ownedHelper);
+        if (!r.Started) helper.StopIfStartedByUs(ownedHelper);
         return r;
     }
 
-    LaunchOutcome Launch(Game g, DisplayInfo? chosen)
+    LaunchOutcome Launch(Game g, DisplayInfo? chosen, Process? ownedHelper = null)
     {
         if (Running is not null) return new(false, false, $"{Running.Name} is already running");
         var target = chosen is not null ? new GameTargetResult(chosen, false, "chosen by user")
@@ -91,11 +90,12 @@ public sealed class GameLaunchService(IGameRepository repo, DisplayWatcher watch
         SessionChanged?.Invoke();
         var dir = _dir = TrackableDir(g.InstallDir ?? (isUri ? null : Path.GetDirectoryName(cmd.FileName)));
         // Platform URIs start a short-lived handler, not the game: track only the install folder for those.
-        _ = Task.Run(() => TrackAsync(g, dir, isUri ? null : proc, target.Display));
+        if (isUri) proc?.Dispose();
+        _ = Task.Run(() => TrackAsync(g, dir, isUri ? null : proc, target.Display, ownedHelper));
         return new(true, false, $"Starting {g.Name} on {target.Display?.Identity.FriendlyName ?? "its default display"}");
     }
 
-    async Task TrackAsync(Game g, string? dir, Process? proc, DisplayInfo? target)
+    async Task TrackAsync(Game g, string? dir, Process? proc, DisplayInfo? target, Process? ownedHelper)
     {
         var started = DateTime.UtcNow;
         bool verified = false, seen = false;
@@ -137,22 +137,30 @@ public sealed class GameLaunchService(IGameRepository repo, DisplayWatcher watch
                 await Task.Delay(3000);
                 pids.RemoveWhere(id => { try { using var p = Process.GetProcessById(id); return p.HasExited; } catch { return true; } });
                 if (pids.Count == 0) pids = Pids(dir, proc);
+                if (pids.Count > 0) seen = true;
                 emptyPolls = pids.Count == 0 ? emptyPolls + 1 : 0;
             }
         }
-        catch (Exception ex) { log.LogError(ex, "Tracking {Game} failed", g.Name); }
+        catch (Exception ex)
+        {
+            ownedHelper?.Dispose(); // Exit could not be confirmed. Leave the helper running.
+            ownedHelper = null;
+            log.LogError(ex, "Tracking {Game} failed", g.Name);
+        }
+        finally { proc?.Dispose(); }
 
         if (!seen)
         {
+            ownedHelper?.Dispose();
             // Never saw the game: no playtime, and don't pull the launcher forward later over a game that may still start.
             Ui(() => { Running = null; _window = IntPtr.Zero; SessionChanged?.Invoke(); Notify?.Invoke($"Couldn't detect {g.Name} starting — check its launcher. Gaming Hub stopped tracking it."); });
             return;
         }
         var played = DateTime.UtcNow - started;
-        repo.AddPlaytime(g.Id, played, DateTime.UtcNow);
-        if (verified && target is not null) { g.LastUsedDisplay = target.Identity; repo.Save(g); }
+        try { repo.AddPlaytime(g.Id, played, DateTime.UtcNow, verified ? target?.Identity : null); }
+        catch (Exception ex) { log.LogError(ex, "Could not save playtime for {Game}", g.Name); }
         log.LogInformation("{Game} session ended after {Played}; placement verified={Verified}", g.Name, played, verified);
-        if (_helperKind is { } hk) helper.StopIfStartedByUs(hk, _startedHelper);   // DS4Windows only, and only if Gaming Hub started it
+        helper.StopIfStartedByUs(ownedHelper);
         Ui(() =>
         {
             Running = null;

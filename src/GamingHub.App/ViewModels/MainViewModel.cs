@@ -882,7 +882,7 @@ public sealed partial class MainViewModel : ObservableObject
         ? $"{SetupHelper.Purpose}. {(ControllerHelperService.IsRunning(SetupHelper) ? "Running" : "Installed")} at {p}. {HelperAfterGame}"
         : $"{SetupHelper.Name} isn't installed. Install it, or use Locate to select it.";
 
-    string HelperAfterGame => SetupHelper.ShutdownArgs is null ? "It keeps running in the notification area after the game." : "It closes after the game.";
+    string HelperAfterGame => !SetupHelper.CloseAfterGame ? "It keeps running in the notification area after the game." : "It closes after the game if Gaming Hub started it.";
 
     /// <summary>Per-game choices in Game settings.</summary>
     public string[] HelperChoices { get; } = ["Off", .. HelperKind.All.Select(h => h.Name)];
@@ -891,7 +891,7 @@ public sealed partial class MainViewModel : ObservableObject
     public string GameHelperStatus => ControllerHelperService.ByName(NewHelperChoice) is not { } h
         ? "This game doesn't use a controller helper."
         : _helper.FindExe(h) is { } p
-            ? $"{h.Purpose}. {(ControllerHelperService.IsRunning(h) ? "Running" : "Installed")} at {p}. {(h.ShutdownArgs is null ? "It keeps running in the notification area after the game." : "It closes after the game.")}"
+            ? $"{h.Purpose}. {(ControllerHelperService.IsRunning(h) ? "Running" : "Installed")} at {p}. {(!h.CloseAfterGame ? "It keeps running in the notification area after the game." : "It closes after the game if Gaming Hub started it.")}"
             : $"{h.Name} isn't installed. Install it, or set its location in Settings › Controller.";
 
     partial void OnNewHelperChoiceChanged(string value) => OnPropertyChanged(nameof(GameHelperStatus));

@@ -8,7 +8,7 @@
     <Product>Gaming Hub</Product>
     <Description>Controller-first multi-monitor game launcher</Description>
     <AssemblyName>GamingHub</AssemblyName>
-    <Version>1.0.4</Version>
+    <Version>1.0.5</Version>
     <AssemblyTitle>Gaming Hub</AssemblyTitle>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <UseWindowsForms>true</UseWindowsForms>
