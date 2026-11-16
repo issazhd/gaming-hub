@@ -14,7 +14,7 @@ using Microsoft.Win32;
 
 namespace GamingHub.App.ViewModels;
 
-public sealed record DisplayItem(DisplayInfo Info, bool IsPreferred, bool IsFallback, bool IsHost)
+public sealed record DisplayItem(DisplayInfo Info, bool IsPreferred, bool IsFallback, bool IsHost, bool CanStopExtending)
 {
     public string Title => $"{Info.Identity.FriendlyName}{(Info.IsPrimary ? "  (Windows primary)" : "")}";
     public string Details => Info.IsActive
@@ -329,7 +329,9 @@ public sealed partial class MainViewModel : ObservableObject
         var fallback = s.FallbackMode == FallbackMode.SpecificDisplay
             ? DisplayMatcher.Match(s.Fallback, snapshot.Displays).Display : snapshot.Primary;
         var host = _placement.VisibleHost;
-        var rows = snapshot.Displays.Select(d => new DisplayItem(d, d == preferred.Display, d == fallback, d == host)).ToList();
+        bool multiple = snapshot.Active.Skip(1).Any();
+        var rows = snapshot.Displays.Select(d => new DisplayItem(d, d == preferred.Display, d == fallback, d == host,
+            multiple && d.IsActive && !string.IsNullOrEmpty(d.Identity.DevicePath))).ToList();
         if (!Displays.SequenceEqual(rows))
         {
             var previous = InspectedDisplay?.Info;
@@ -454,6 +456,16 @@ public sealed partial class MainViewModel : ObservableObject
 
     /// <summary>"Extend desktop" on a connected display that isn't part of the desktop (Win+P › Extend; only on request).</summary>
     [RelayCommand]
+    void StopExtending(DisplayItem d) => StopExtendingTo(d.Info);
+
+    void StopExtendingTo(DisplayInfo display)
+    {
+        var error = Infrastructure.Displays.DisplayTopology.StopExtending(display.Identity.DevicePath);
+        ShowToast(error ?? $"Stopped extending to {display.Identity.FriendlyName}");
+        _watcher.Schedule("stop extending requested");
+    }
+
+    [RelayCommand]
     void ExtendDisplay(DisplayItem d)
     {
         if (d.CanUse) { ShowToast($"{d.Info.Identity.FriendlyName} is already part of the desktop"); return; }
@@ -479,13 +491,17 @@ public sealed partial class MainViewModel : ObservableObject
     /// connected but not part of the desktop. The display watcher then moves the launcher there as usual.</summary>
     public void ExtendToPreferredDisplay(bool fromGame)
     {
-        if (!ControllerSettings.PsDoubleExtendsDisplay) { Serilog.Log.Information("PS triple press ignored: setting off"); return; }
+        if (!ControllerSettings.PsDoubleExtendsDisplay && !ControllerSettings.PsTripleStopsExtending) return;
         if (DisplaySettings.Preferred is not { } pref) { ShowToast("Choose a preferred display in Settings first"); return; }
         var m = DisplayMatcher.Match(pref, _watcher.Current.Displays).Display;
         Serilog.Log.Information("PS triple press: preferred {Pref} → {Match}", pref, m?.Status.ToString() ?? "not connected");
         if (m is null) { ShowToast($"{pref.FriendlyName} isn't connected (is it on, and on the right input?)"); return; }
-        // Already part of the desktop: nothing to extend. The second press just closed the quick menu, as a normal press would.
-        if (m.IsActive) return;
+        if (m.IsActive)
+        {
+            if (ControllerSettings.PsTripleStopsExtending) StopExtendingTo(m);
+            return;
+        }
+        if (!ControllerSettings.PsDoubleExtendsDisplay) return;
         int rc = Infrastructure.Displays.DisplayTopology.Extend();
         if (rc == 0) _placement.GoToPreferredSoon(restoreFocus: !fromGame);
         Serilog.Log.Information("Extend requested: SetDisplayConfig rc={Rc}", rc);

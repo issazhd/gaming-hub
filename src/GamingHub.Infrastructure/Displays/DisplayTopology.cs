@@ -13,6 +13,55 @@ public static class DisplayTopology
     /// <summary>Same as Win+P › Extend: every connected display becomes part of the desktop. Returns the Win32 result (0 = OK).</summary>
     public static int Extend() => SetDisplayConfig(0, IntPtr.Zero, 0, IntPtr.Zero, SDC_TOPOLOGY_EXTEND | SDC_APPLY);
 
+    public static string? StopExtending(string? devicePath)
+    {
+        if (string.IsNullOrWhiteSpace(devicePath)) return "This display could not be identified.";
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            int rc = NativeDisplay.GetDisplayConfigBufferSizes(NativeDisplay.QDC_ONLY_ACTIVE_PATHS, out var np, out var nm);
+            if (rc != 0) return $"Windows could not read the active displays (error {rc}).";
+            var paths = new NativeDisplay.PATH_INFO[np];
+            var modes = new NativeDisplay.MODE_INFO[nm];
+            rc = NativeDisplay.QueryDisplayConfig(NativeDisplay.QDC_ONLY_ACTIVE_PATHS, ref np, paths, ref nm, modes, IntPtr.Zero);
+            if (rc == NativeDisplay.ERROR_INSUFFICIENT_BUFFER) continue;
+            if (rc != 0) return $"Windows could not read the active displays (error {rc}).";
+            var active = paths.Take((int)np).ToArray();
+            var remaining = active.Where(p => !string.Equals(devicePath,
+                WindowsDisplayProvider.GetTargetName(p.target.adapterId, p.target.id)?.monitorDevicePath,
+                StringComparison.OrdinalIgnoreCase)).ToArray();
+            if (remaining.Length != active.Length - 1) return "This display is no longer uniquely active.";
+            if (remaining.Length == 0) return "Keep at least one display active.";
+            var kept = new List<NativeDisplay.MODE_INFO>();
+            var indices = new Dictionary<uint, uint>();
+            uint Remap(uint index)
+            {
+                if (indices.TryGetValue(index, out var mapped)) return mapped;
+                indices[index] = mapped = (uint)kept.Count;
+                kept.Add(modes[index]);
+                return mapped;
+            }
+            for (int i = 0; i < remaining.Length; i++)
+            {
+                ref var p = ref remaining[i];
+                if (p.source.modeInfoIdx >= nm || p.target.modeInfoIdx >= nm) return "Windows did not provide a complete display layout.";
+                p.source.modeInfoIdx = Remap(p.source.modeInfoIdx);
+                p.target.modeInfoIdx = Remap(p.target.modeInfoIdx);
+            }
+            var layout = kept.ToArray();
+            var anchor = layout.Where(m => m.infoType == NativeDisplay.MODE_INFO_TYPE_SOURCE)
+                .OrderBy(m => (long)m.sourceX * m.sourceX + (long)m.sourceY * m.sourceY).First();
+            for (int i = 0; i < layout.Length; i++)
+                if (layout[i].infoType == NativeDisplay.MODE_INFO_TYPE_SOURCE)
+                { layout[i].sourceX -= anchor.sourceX; layout[i].sourceY -= anchor.sourceY; }
+            uint supplied = NativeDisplay.SDC_USE_SUPPLIED_DISPLAY_CONFIG;
+            rc = NativeDisplay.SetDisplayConfig((uint)remaining.Length, remaining, (uint)layout.Length, layout, supplied | 0x40); // SDC_VALIDATE
+            if (rc == 0) rc = NativeDisplay.SetDisplayConfig((uint)remaining.Length, remaining, (uint)layout.Length, layout,
+                supplied | NativeDisplay.SDC_APPLY | NativeDisplay.SDC_SAVE_TO_DATABASE);
+            return rc == 0 ? null : $"Windows could not stop extending to this display (error {rc}).";
+        }
+        return "The display layout is changing. Try again.";
+    }
+
     // ---- Main (primary) display: the classic ChangeDisplaySettingsEx method — the main display sits at (0,0),
     // so every active display is shifted by the new main display's position, then all changes apply at once. ----
     const int ENUM_CURRENT_SETTINGS = -1, DM_POSITION = 0x20, DISPLAY_DEVICE_ATTACHED_TO_DESKTOP = 0x1;

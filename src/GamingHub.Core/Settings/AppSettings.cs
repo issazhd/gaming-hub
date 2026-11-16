@@ -61,6 +61,7 @@ public sealed class ControllerSettings
     public string? Helper { get; set; }
     /// <summary>Triple-press PS: if the preferred display is connected but not part of the desktop, extend the desktop to it (Win+P › Extend). Off by default — it changes the Windows display layout.</summary>
     public bool PsDoubleExtendsDisplay { get; set; }
+    public bool PsTripleStopsExtending { get; set; }
     /// <summary>DualSense touchpad moves the pointer and its press clicks (Gaming Hub's windows only).</summary>
     public bool TouchpadPointer { get; set; } = true;
     /// <summary>Touchpad pointer speed, 1 (slow) to 5 (very fast).</summary>

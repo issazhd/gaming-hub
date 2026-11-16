@@ -78,7 +78,7 @@ public sealed class WindowsDisplayProvider(ILogger<WindowsDisplayProvider> log) 
         return [];
     }
 
-    static TARGET_DEVICE_NAME? GetTargetName(LUID adapter, uint id)
+    internal static TARGET_DEVICE_NAME? GetTargetName(LUID adapter, uint id)
     {
         var r = new TARGET_DEVICE_NAME();
         r.header = new() { type = GET_TARGET_NAME, size = (uint)Marshal.SizeOf<TARGET_DEVICE_NAME>(), adapterId = adapter, id = id };

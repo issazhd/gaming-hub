@@ -167,7 +167,7 @@ public sealed unsafe class ControllerService(SettingsService settings, ILogger<C
                     if (_guideDown > 0)
                     {
                         _lastGuideTap = Environment.TickCount64;
-                        _guideTaps = S.PsDoubleExtendsDisplay ? _guideTaps + 1 : 1;
+                        _guideTaps = S.PsDoubleExtendsDisplay || S.PsTripleStopsExtending ? _guideTaps + 1 : 1;
                         if (_guideTaps == 1) Action?.Invoke(NavAction.Guide);
                         if (_guideTaps == 2) Action?.Invoke(NavAction.GuideSecondTap);
                         if (_guideTaps == 3)

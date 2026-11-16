@@ -143,6 +143,24 @@ public partial class QuickMenuWindow : Window
         GameAction.Tag = canReturn ? "\uE768" : hasRecent ? "\uE823" : "\uE8F1";
         CloseGameButton.IsEnabled = playing;   // kept in place (dimmed) so the grid doesn't jump
         CloseGameButton.Content = _closeArmed ? "Press again" : "Close game";
+        SessionHelpers.Visibility = playing ? Visibility.Visible : Visibility.Collapsed;
+        HelperTitle.Text = _games.SessionHelperName is { } name ? $"Controller helper: {name}" : "Start a controller helper for this session";
+        HelperButtons.Children.Clear();
+        if (playing && _games.SessionHelperName is null)
+            foreach (var kind in HelperKind.All.Where(h => h.CloseAfterGame))
+            {
+                var button = new Button { Content = kind.Name, Style = (Style)FindResource("Chip") };
+                button.Click += async (_, _) =>
+                {
+                    HelperButtons.IsEnabled = false;
+                    _status = await _games.StartSessionHelperAsync(_openingGame!, kind);
+                    if (_closing) { _vm.ShowToast(_status); return; }
+                    HelperButtons.IsEnabled = true;
+                    Refresh();
+                    GameAction.Focus();
+                };
+                HelperButtons.Children.Add(button);
+            }
 
         _vm.RefreshDisplays();
         DisplayButtons.Children.Clear();
@@ -162,6 +180,12 @@ public partial class QuickMenuWindow : Window
                 Back();
             };
             DisplayButtons.Children.Add(b);
+            if (d.CanStopExtending && d.IsPreferred)
+            {
+                var stop = new Button { Content = $"Stop extending to {d.Info.Identity.FriendlyName}", Style = (Style)FindResource("Chip") };
+                stop.Click += (_, _) => { _vm.StopExtendingCommand.Execute(d); CloseMenu(); };
+                DisplayButtons.Children.Add(stop);
+            }
             if (d.CanMakeMain)
             {
                 var main = new Button { Content = $"Make {d.Info.Identity.FriendlyName} main", Style = (Style)FindResource("Chip") };

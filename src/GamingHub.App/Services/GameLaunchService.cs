@@ -21,6 +21,50 @@ public sealed class GameLaunchService(IGameRepository repo, DisplayWatcher watch
 
     public Game? Running { get; private set; }
     public DateTime? DetectedSessionStartUtc { get; private set; }
+    // Accessed on the UI thread. A distinct session object also covers replaying the same game.
+    sealed class HelperSession
+    {
+        public Task<Process?>? Startup;
+        public HelperKind? Kind;
+    }
+    HelperSession? _helpers;
+    public string? SessionHelperName => _helpers?.Kind?.Name;
+
+    public async Task<string> StartSessionHelperAsync(Game game, HelperKind kind)
+    {
+        var session = _helpers;
+        if (session is null || Running != game || DetectedSessionStartUtc is null)
+            return "No tracked game is running.";
+        if (session.Kind is not null) return $"{session.Kind.Name} is already selected for this session.";
+        if (!kind.CloseAfterGame) return "This helper does not support automatic shutdown.";
+        session.Kind = kind;
+        try
+        {
+            session.Startup = helper.EnsureRunningAsync(kind);
+            var owned = await session.Startup;
+            return owned is null ? $"{kind.Name} was already open." : $"{kind.Name} started for {game.Name}.";
+        }
+        catch (Exception ex)
+        {
+            session.Kind = null;
+            session.Startup = null;
+            return ex.Message;
+        }
+    }
+
+    async Task EndHelperSessionAsync(bool confirmedExit)
+    {
+        var startup = _helpers?.Startup;
+        _helpers = null;
+        if (startup is null) return;
+        try
+        {
+            var owned = await startup;
+            if (confirmedExit) await Task.Run(() => helper.StopIfStartedByUs(owned));
+            else owned?.Dispose();
+        }
+        catch (Exception ex) { log.LogWarning(ex, "Controller helper session ended during startup"); }
+    }
     IntPtr _window;
     public event Action<Game>? Exited;          // UI thread
     public event Action<string>? Notify;        // UI thread
@@ -88,18 +132,20 @@ public sealed class GameLaunchService(IGameRepository repo, DisplayWatcher watch
             g.Name, isUri ? cmd.FileName : g.RunElevated ? "admin task" : "exe", proc?.Id, target.Display?.Identity.FriendlyName, target.Reason);
 
         Running = g;
+        _helpers = new HelperSession { Kind = g.UseControllerHelper ? ControllerHelperService.ByName(g.HelperName) : null,
+            Startup = ownedHelper is null ? null : Task.FromResult<Process?>(ownedHelper) };
         SessionChanged?.Invoke();
         var dir = _dir = TrackableDir(g.InstallDir ?? (isUri ? null : Path.GetDirectoryName(cmd.FileName)));
         // Platform URIs start a short-lived handler, not the game: track only the install folder for those.
         if (isUri) proc?.Dispose();
-        _ = Task.Run(() => TrackAsync(g, dir, isUri ? null : proc, target.Display, ownedHelper));
+        _ = Task.Run(() => TrackAsync(g, dir, isUri ? null : proc, target.Display));
         return new(true, false, $"Starting {g.Name} on {target.Display?.Identity.FriendlyName ?? "its default display"}");
     }
 
-    async Task TrackAsync(Game g, string? dir, Process? proc, DisplayInfo? target, Process? ownedHelper)
+    async Task TrackAsync(Game g, string? dir, Process? proc, DisplayInfo? target)
     {
         var started = DateTime.UtcNow;
-        bool verified = false, seen = false;
+        bool verified = false, seen = false, confirmedExit = false;
         try
         {
             // 1) Find the real game window: same window seen 3 polls in a row (skips short splash screens).
@@ -145,29 +191,27 @@ public sealed class GameLaunchService(IGameRepository repo, DisplayWatcher watch
                 if (pids.Count > 0) seen = true;
                 emptyPolls = pids.Count == 0 ? emptyPolls + 1 : 0;
             }
+            confirmedExit = seen;
         }
         catch (Exception ex)
         {
-            ownedHelper?.Dispose(); // Exit could not be confirmed. Leave the helper running.
-            ownedHelper = null;
             log.LogError(ex, "Tracking {Game} failed", g.Name);
         }
         finally { proc?.Dispose(); }
 
         if (!seen)
         {
-            ownedHelper?.Dispose();
             // Never saw the game: no playtime, and don't pull the launcher forward later over a game that may still start.
-            Ui(() => { Running = null; _window = IntPtr.Zero; SessionChanged?.Invoke(); Notify?.Invoke($"Couldn't detect {g.Name} starting — check its launcher. Gaming Hub stopped tracking it."); });
+            Ui(() => { _ = EndHelperSessionAsync(false); Running = null; _window = IntPtr.Zero; SessionChanged?.Invoke(); Notify?.Invoke($"Couldn't detect {g.Name} starting — check its launcher. Gaming Hub stopped tracking it."); });
             return;
         }
         var played = DateTime.UtcNow - started;
         try { repo.AddPlaytime(g.Id, played, DateTime.UtcNow, verified ? target?.Identity : null); }
         catch (Exception ex) { log.LogError(ex, "Could not save playtime for {Game}", g.Name); }
         log.LogInformation("{Game} session ended after {Played}; placement verified={Verified}", g.Name, played, verified);
-        helper.StopIfStartedByUs(ownedHelper);
-        Ui(() =>
+        Ui(async () =>
         {
+            await EndHelperSessionAsync(confirmedExit);
             Running = null;
             DetectedSessionStartUtc = null;
             _window = IntPtr.Zero;

@@ -238,6 +238,10 @@
                 <!-- Screens -->
                 <TextBlock Text="Show Gaming Hub on" FontSize="13" Foreground="{StaticResource Dim}" Margin="0,0,0,8" />
                 <WrapPanel x:Name="DisplayButtons" />
+                <StackPanel x:Name="SessionHelpers" Visibility="Collapsed" Margin="0,10,0,0">
+                    <TextBlock x:Name="HelperTitle" Text="Start a controller helper for this session" />
+                    <WrapPanel x:Name="HelperButtons" />
+                </StackPanel>
             </StackPanel>
             </ScrollViewer>
         </DockPanel>

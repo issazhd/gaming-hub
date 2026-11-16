@@ -769,6 +769,8 @@
                                                         Command="{Binding DataContext.MakeMainDisplayCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
                                                 <Button Content="Extend desktop to this display" Visibility="{Binding CanUse, Converter={StaticResource NotVis}}"
                                                         Command="{Binding DataContext.ExtendDisplayCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
+                                                <Button Content="Stop extending to this display" Visibility="{Binding CanStopExtending, Converter={StaticResource Vis}}"
+                                                        Command="{Binding DataContext.StopExtendingCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
                                             </WrapPanel>
                                         </StackPanel>
                                     </Border>
@@ -831,6 +833,7 @@
                                 <CheckBox Style="{StaticResource ToggleRow}" Content="PS button opens Gaming Hub" Tag="Bring Gaming Hub to the front from the desktop or another app. Inside Gaming Hub, the PS button opens the quick menu." IsChecked="{Binding ControllerSettings.PsButtonOpensHub}" Command="{Binding SaveSettingsCommand}" />
                                 <CheckBox Style="{StaticResource ToggleRow}" Content="Quick menu during games" Tag="Press PS for sound, display and game controls. Press Circle to resume. Exclusive fullscreen games may briefly minimize while the menu is open." IsChecked="{Binding ControllerSettings.QuickMenuOverGames}" Command="{Binding SaveSettingsCommand}" />
                                 <CheckBox Style="{StaticResource ToggleRow}" Content="Triple-press PS to extend the desktop" Tag="Press PS three times with up to 1.5 seconds between taps to turn on your preferred display (for example the TV) when it's plugged in but not part of the Windows desktop, like Win+P › Extend. Gaming Hub then moves there." IsChecked="{Binding ControllerSettings.PsDoubleExtendsDisplay}" Command="{Binding SaveSettingsCommand}" />
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Triple-press PS to stop extending" Tag="Disconnect the preferred display from the desktop when another screen is active. Enable both triple-press options to switch back and forth." IsChecked="{Binding ControllerSettings.PsTripleStopsExtending}" Command="{Binding SaveSettingsCommand}" />
                                 <CheckBox Style="{StaticResource ToggleRow}" Content="Touchpad moves the pointer" Tag="Slide a finger on the touchpad to move the pointer and press the touchpad to click, in Gaming Hub and on the desktop. Off while a game is running. Windows doesn't allow it on administrator (UAC) prompts." IsChecked="{Binding ControllerSettings.TouchpadPointer}" Command="{Binding SaveSettingsCommand}" />
                                 <DockPanel Style="{StaticResource ValueRow}">
                                     <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding TouchpadSpeeds}" SelectedItem="{Binding TouchpadSpeedName}" MinWidth="200" VerticalAlignment="Center" />
@@ -847,7 +850,7 @@
                                         <TextBlock Text="A free, open-source virtual mouse driver by the author of DS4Windows. Windows treats its input like a real mouse, so it works where other controller input is blocked. Installing it requires administrator approval." Style="{StaticResource RowDesc}" />
                                     </StackPanel>
                                 </DockPanel>
-                                <CheckBox Style="{StaticResource ToggleRow}" Content="Allow the triple-press during full-screen games" Tag="Off: while a game is running full screen, the triple-press does nothing, because changing the display layout can make a game flicker, minimize, change resolution or crash. On: it extends the desktop anyway." IsChecked="{Binding ControllerSettings.PsButtonOverGames}" Command="{Binding SaveSettingsCommand}" />
+                                <CheckBox Style="{StaticResource ToggleRow}" Content="Allow the triple-press during full-screen games" Tag="Allow the display shortcuts above while playing full screen. Changing the desktop layout can minimize the game or interrupt play." IsChecked="{Binding ControllerSettings.PsButtonOverGames}" Command="{Binding SaveSettingsCommand}" />
                                 <DockPanel Style="{StaticResource ValueRow}">
                                     <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding LightBarColors}" SelectedItem="{Binding SelectedLightBar}" AutomationProperties.Name="Controller 1 light bar color" MinWidth="200" VerticalAlignment="Center" />
                                     <TextBlock Text="Controller 1 light bar color" FontSize="19" VerticalAlignment="Center" />
